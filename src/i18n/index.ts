@@ -1,0 +1,127 @@
+import { ref } from "vue";
+
+export type Lang = "zh" | "en";
+
+/** 模块级单例语言状态，持久化到 localStorage */
+const lang = ref<Lang>((localStorage.getItem("port-view-lang") as Lang) || "zh");
+
+type Dict = Record<string, string>;
+
+const zh: Dict = {
+  "app.desc": "Windows 端口与进程监控 · 实时掌握网络连接",
+  "stat.tcp": "TCP",
+  "stat.udp": "UDP",
+  "stat.listening": "监听",
+  "stat.processes": "进程",
+  "filter.label": "筛选",
+  "filter.allProtocol": "全部协议",
+  "filter.allStatus": "全部状态",
+  "search.placeholder": "搜索进程、端口、PID、软件名…",
+  "btn.refresh": "刷新",
+  "btn.settings": "设置",
+  "list.col.process": "进程",
+  "list.col.pid": "PID",
+  "list.col.tcp": "TCP",
+  "list.col.udp": "UDP",
+  "list.col.listening": "监听",
+  "list.col.ports": "端口",
+  "list.col.status": "状态",
+  "list.col.actions": "操作",
+  "status.active": "活跃",
+  "status.idle": "空闲",
+  "btn.connections": "连接",
+  "btn.collapse": "收起",
+  "btn.kill": "结束",
+  "btn.cancel": "取消",
+  "confirm.critical": "危险操作：结束 {name}（PID {pid}）可能导致系统异常，确认结束？",
+  "confirm.kill": "确认结束进程 {name}（PID {pid}）？",
+  "empty.title": "没有匹配的进程",
+  "empty.tip": "试试调整搜索关键词或筛选条件",
+  "settings.title": "设置",
+  "settings.theme": "外观主题",
+  "theme.system": "跟随系统",
+  "theme.system.desc": "自动匹配 Windows 深浅色",
+  "theme.light": "亮色",
+  "theme.light.desc": "纯白背景 + 白色卡片",
+  "theme.dark": "暗色",
+  "theme.dark.desc": "深蓝灰背景 + 深色卡片",
+  "settings.language": "界面语言",
+  "lang.zh": "简体中文",
+  "lang.en": "English",
+  "settings.about": "关于",
+  "settings.repos": "代码仓库",
+  "settings.sponsor": "赞助支持",
+  "settings.sponsorTip": "如果这个工具对你有帮助，请作者喝杯咖啡",
+  "sponsor.alipay": "支付宝",
+  "sponsor.wechat": "微信",
+  "settings.close": "关闭",
+};
+
+const en: Dict = {
+  "app.desc": "Windows Port & Process Monitor · real-time network connections",
+  "stat.tcp": "TCP",
+  "stat.udp": "UDP",
+  "stat.listening": "Listen",
+  "stat.processes": "Procs",
+  "filter.label": "Filter",
+  "filter.allProtocol": "All protocols",
+  "filter.allStatus": "All states",
+  "search.placeholder": "Search process, port, PID, app name…",
+  "btn.refresh": "Refresh",
+  "btn.settings": "Settings",
+  "list.col.process": "Process",
+  "list.col.pid": "PID",
+  "list.col.tcp": "TCP",
+  "list.col.udp": "UDP",
+  "list.col.listening": "Listen",
+  "list.col.ports": "Ports",
+  "list.col.status": "Status",
+  "list.col.actions": "Actions",
+  "status.active": "Active",
+  "status.idle": "Idle",
+  "btn.connections": "Links",
+  "btn.collapse": "Hide",
+  "btn.kill": "Kill",
+  "btn.cancel": "Cancel",
+  "confirm.critical":
+    "Warning: killing {name} (PID {pid}) may destabilize the system. Continue?",
+  "confirm.kill": "Kill process {name} (PID {pid})?",
+  "empty.title": "No matching process",
+  "empty.tip": "Try adjusting the keyword or filters",
+  "settings.title": "Settings",
+  "settings.theme": "Appearance",
+  "theme.system": "System",
+  "theme.system.desc": "Follow Windows light/dark mode",
+  "theme.light": "Light",
+  "theme.light.desc": "Pure white background + white cards",
+  "theme.dark": "Dark",
+  "theme.dark.desc": "Dark blue-gray background + dark cards",
+  "settings.language": "Language",
+  "lang.zh": "简体中文",
+  "lang.en": "English",
+  "settings.about": "About",
+  "settings.repos": "Repositories",
+  "settings.sponsor": "Sponsor",
+  "settings.sponsorTip": "If this tool helps, buy me a coffee",
+  "sponsor.alipay": "Alipay",
+  "sponsor.wechat": "WeChat",
+  "settings.close": "Close",
+};
+
+export function useI18n() {
+  function setLang(l: Lang) {
+    lang.value = l;
+    localStorage.setItem("port-view-lang", l);
+  }
+  /** 翻译函数：渲染期调用会收集 lang 依赖，切换语言自动重渲染 */
+  function t(key: string, vars?: Record<string, string | number>): string {
+    let s = lang.value === "en" ? en[key] ?? zh[key] ?? key : zh[key] ?? key;
+    if (vars) {
+      Object.entries(vars).forEach(([k, v]) => {
+        s = s.replace(`{${k}}`, String(v));
+      });
+    }
+    return s;
+  }
+  return { lang, setLang, t };
+}

@@ -1,28 +1,31 @@
 <script setup lang="ts">
+import { computed } from "vue";
 import { useConnectionsStore } from "../stores/connections";
+import { useI18n } from "../i18n";
 
 const store = useConnectionsStore();
+const { t } = useI18n();
 
-const protocolOptions = [
-  { label: "全部协议", value: "全部" },
+const protocolOptions = computed(() => [
+  { label: t("filter.allProtocol"), value: "全部" },
   { label: "TCP", value: "TCP" },
   { label: "UDP", value: "UDP" },
-];
+]);
 
-const statusOptions = [
-  { label: "全部状态", value: "全部" },
+const statusOptions = computed(() => [
+  { label: t("filter.allStatus"), value: "全部" },
   { label: "LISTENING", value: "LISTENING" },
   { label: "ESTABLISHED", value: "ESTABLISHED" },
   { label: "TIME_WAIT", value: "TIME_WAIT" },
   { label: "CLOSE_WAIT", value: "CLOSE_WAIT" },
-  { label: "其他", value: "其他" },
-];
+  { label: t("filter.allStatus") === "全部状态" ? "其他" : "Other", value: "其他" },
+]);
 </script>
 
 <template>
   <div class="flex shrink-0 items-center gap-3 pt-4">
     <span class="text-xs font-bold tracking-wider" :style="{ color: 'var(--pv-text-soft)' }">
-      筛选
+      {{ t("filter.label") }}
     </span>
     <n-select v-model:value="store.protocol" :options="protocolOptions" class="w-32" size="medium" />
     <n-select v-model:value="store.status" :options="statusOptions" class="w-40" size="medium" />
@@ -32,17 +35,11 @@ const statusOptions = [
       v-model:value="store.search"
       clearable
       size="medium"
-      placeholder="搜索进程、端口、PID、软件名…"
-      class="ml-auto w-[320px]"
+      :placeholder="t('search.placeholder')"
+      class="ml-auto w-[320px] pv-search"
     />
-    <n-button
-      type="primary"
-      size="medium"
-      round
-      :loading="store.loading"
-      @click="store.refresh()"
-    >
-      刷新
+    <n-button type="primary" size="medium" round :loading="store.loading" @click="store.refresh()">
+      {{ t("btn.refresh") }}
     </n-button>
   </div>
 </template>

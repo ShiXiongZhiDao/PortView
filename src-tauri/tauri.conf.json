@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "port-view",
+        "title": "Port Process View",
         "width": 1280,
         "height": 800,
         "minWidth": 1024,
