@@ -3,11 +3,13 @@ import { computed, ref } from "vue";
 import { NPopconfirm, useMessage } from "naive-ui";
 import { useConnectionsStore } from "../stores/connections";
 import { useTheme } from "../composables/useTheme";
+import { useI18n } from "../i18n";
 import type { ProcessInfo } from "../types";
 
 const store = useConnectionsStore();
 const message = useMessage();
 const { isDark } = useTheme();
+const { t } = useI18n();
 
 /** 当前展开的进程 PID（同时只展开一个） */
 const expandedPid = ref<number | null>(null);
@@ -50,16 +52,16 @@ function isCritical(pid: number, name: string): boolean {
   );
 }
 
-const columns = [
-  { label: "进程", width: "220px" },
-  { label: "PID", width: "70px" },
-  { label: "TCP", width: "56px" },
-  { label: "UDP", width: "56px" },
-  { label: "监听", width: "56px" },
-  { label: "端口", width: "1fr" },
-  { label: "状态", width: "72px" },
-  { label: "操作", width: "170px" },
-];
+const columns = computed(() => [
+  { label: t("list.col.process"), width: "220px" },
+  { label: t("list.col.pid"), width: "70px" },
+  { label: t("list.col.tcp"), width: "56px" },
+  { label: t("list.col.udp"), width: "56px" },
+  { label: t("list.col.listening"), width: "56px" },
+  { label: t("list.col.ports"), width: "1fr" },
+  { label: t("list.col.status"), width: "72px" },
+  { label: t("list.col.actions"), width: "150px" },
+]);
 </script>
 
 <template>
@@ -154,38 +156,35 @@ const columns = [
                 padding: '1px 8px',
               }"
             >
-              {{ row.tcp + row.udp > 0 ? "Active" : "Idle" }}
+              {{ row.tcp + row.udp > 0 ? t("status.active") : t("status.idle") }}
             </span>
           </div>
 
           <!-- 操作 -->
-          <div class="flex shrink-0 items-center gap-1.5" style="width: 170px">
+          <div class="flex shrink-0 items-center gap-1.5" style="width: 150px">
             <button
               v-if="row.tcp + row.udp > 0"
               class="pv-btn px-2.5 py-1 text-[11px]"
               :style="{ background: 'var(--pv-green-bg)', color: 'var(--pv-green-text)' }"
               @click="toggle(row.pid)"
             >
-              {{ expandedPid === row.pid ? "收起" : "连接" }}
+              {{ expandedPid === row.pid ? t("btn.collapse") : t("btn.connections") }}
             </button>
             <n-popconfirm
-              :positive-text="'结束'"
-              :negative-text="'取消'"
+              :positive-text="t('btn.kill')"
+              :negative-text="t('btn.cancel')"
               @positive-click="handleKill(row.pid)"
             >
               <template #trigger>
-                <button
-                  class="pv-btn px-2.5 py-1 text-[11px] text-white"
-                  :style="{ background: '#DC2626' }"
-                >
-                  结束
+                <button class="pv-btn px-2.5 py-1 text-[11px] text-white" :style="{ background: '#DC2626' }">
+                  {{ t("btn.kill") }}
                 </button>
               </template>
               <template #default>
                 {{
                   isCritical(row.pid, row.name)
-                    ? `危险操作：结束 ${row.name}（PID ${row.pid}）可能导致系统异常，确认结束？`
-                    : `确认结束进程 ${row.name}（PID ${row.pid}）？`
+                    ? t("confirm.critical", { name: row.name, pid: row.pid })
+                    : t("confirm.kill", { name: row.name, pid: row.pid })
                 }}
               </template>
             </n-popconfirm>
@@ -244,8 +243,8 @@ const columns = [
       >
         ∅
       </div>
-      <div class="text-sm font-bold" :style="{ color: 'var(--pv-text-soft)' }">没有匹配的进程</div>
-      <div class="text-xs" :style="{ color: 'var(--pv-text-faint)' }">试试调整搜索关键词或筛选条件</div>
+      <div class="text-sm font-bold" :style="{ color: 'var(--pv-text-soft)' }">{{ t("empty.title") }}</div>
+      <div class="text-xs" :style="{ color: 'var(--pv-text-faint)' }">{{ t("empty.tip") }}</div>
     </div>
   </div>
 </template>

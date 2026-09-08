@@ -141,16 +141,22 @@
   opacity: 0.5;
 }
 
-/* 输入框：深色粗边框 */
-.n-input__wrapper {
-  border-width: 3px !important;
-  border-style: solid !important;
-  border-color: var(--pv-stroke) !important;
-  box-shadow: none !important;
+/* 输入框：深色粗边框（naive 边框由 .n-input__border 层绘制，需隐藏后在 wrapper 上重绘） */
+.n-input-wrapper {
+  background-color: var(--pv-card) !important;
+  border: 3px solid var(--pv-stroke) !important;
   border-radius: 12px !important;
+  box-shadow: 2px 2px 0 var(--pv-stroke) !important;
+  transition: border-color 0.12s ease-out, box-shadow 0.12s ease-out;
 }
-.n-input__wrapper:hover {
-  border-color: var(--pv-stroke) !important;
+.n-input-wrapper:hover,
+.n-input-wrapper:focus-within {
+  border-color: var(--pv-green) !important;
+  box-shadow: 2px 2px 0 var(--pv-green) !important;
+}
+.n-input__border,
+.n-input__state-border {
+  display: none !important;
 }
 
 /* 下拉选择：深色粗边框 */
@@ -158,11 +164,12 @@
   border-width: 3px !important;
   border-style: solid !important;
   border-color: var(--pv-stroke) !important;
-  box-shadow: none !important;
+  box-shadow: 2px 2px 0 var(--pv-stroke) !important;
   border-radius: 12px !important;
+  background-color: var(--pv-card) !important;
 }
 .n-base-selection:hover {
-  border-color: var(--pv-stroke) !important;
+  border-color: var(--pv-green) !important;
 }
 
 /* 分页按钮：保持贴纸风格但阴影小一些 */
