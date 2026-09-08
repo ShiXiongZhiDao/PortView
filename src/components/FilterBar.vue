@@ -24,9 +24,6 @@ const statusOptions = computed(() => [
 
 <template>
   <div class="flex shrink-0 items-center gap-3 pt-4">
-    <span class="text-xs font-bold tracking-wider" :style="{ color: 'var(--pv-text-soft)' }">
-      {{ t("filter.label") }}
-    </span>
     <n-select v-model:value="store.protocol" :options="protocolOptions" class="w-32" size="medium" />
     <n-select v-model:value="store.status" :options="statusOptions" class="w-40" size="medium" />
 

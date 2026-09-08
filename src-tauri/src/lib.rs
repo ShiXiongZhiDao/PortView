@@ -35,11 +35,44 @@ fn kill_process(pid: u32) -> Result<String, String> {
     }
 }
 
+/// Windows 11：为无边框窗口设置系统级圆角（DWMWA_WINDOW_CORNER_PREFERENCE）。
+/// Windows 10 不支持该属性，调用会静默失败，无副作用。
+#[cfg(target_os = "windows")]
+fn apply_window_round(window: &tauri::WebviewWindow) {
+    use windows::Win32::Foundation::HWND;
+    use windows::Win32::Graphics::Dwm::{
+        DwmSetWindowAttribute, DWMWA_WINDOW_CORNER_PREFERENCE, DWMWCP_ROUND,
+    };
+    if let Ok(hwnd) = window.hwnd() {
+        // tauri 内部用 windows 0.61，本项目用 0.62，用裸指针重建本版本 HWND
+        let local_hwnd = HWND(hwnd.0);
+        unsafe {
+            let preference = DWMWCP_ROUND;
+            let _ = DwmSetWindowAttribute(
+                local_hwnd,
+                DWMWA_WINDOW_CORNER_PREFERENCE,
+                &preference as *const _ as *const _,
+                std::mem::size_of_val(&preference) as u32,
+            );
+        }
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![get_connections, get_processes, kill_process])
+        .setup(|app| {
+            #[cfg(target_os = "windows")]
+            {
+                use tauri::Manager;
+                if let Some(window) = app.get_webview_window("main") {
+                    apply_window_round(&window);
+                }
+            }
+            Ok(())
+        })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

@@ -189,9 +189,9 @@ html,
 body,
 #app {
   height: 100%;
+  background: transparent;
 }
 body {
-  background: var(--pv-bg);
   font-family: "Nunito", "Segoe UI", "Microsoft YaHei", sans-serif;
   -webkit-font-smoothing: antialiased;
 }
