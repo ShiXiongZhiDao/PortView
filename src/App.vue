@@ -6,6 +6,7 @@ import { useTheme } from "./composables/useTheme";
 import HeroHeader from "./components/HeroHeader.vue";
 import FilterBar from "./components/FilterBar.vue";
 import ProcessList from "./components/ProcessList.vue";
+import TitleBar from "./components/TitleBar.vue";
 
 const store = useConnectionsStore();
 const { isDark } = useTheme();
@@ -24,7 +25,7 @@ const themeOverrides = computed(() =>
           errorColor: "#F87171",
           warningColor: "#FBBF24",
           infoColor: "#60A5FA",
-          bodyColor: "#0F172A",
+          bodyColor: "transparent",
           cardColor: "#1E293B",
           modalColor: "#1E293B",
           popoverColor: "#1E293B",
@@ -69,7 +70,7 @@ const themeOverrides = computed(() =>
           errorColor: "#DC2626",
           warningColor: "#D97706",
           infoColor: "#2563EB",
-          bodyColor: "#FFFFFF",
+          bodyColor: "transparent",
           cardColor: "#FFFFFF",
           modalColor: "#FFFFFF",
           popoverColor: "#FFFFFF",
@@ -116,19 +117,24 @@ onMounted(() => {
     <n-global-style />
     <n-message-provider placement="top-right">
       <div
-        class="flex h-screen flex-col overflow-hidden px-7 py-6"
+        class="flex h-screen flex-col overflow-hidden rounded-[14px]"
         :data-theme="isDark ? 'dark' : 'light'"
         :style="{ background: 'var(--pv-bg)' }"
       >
-        <!-- Hero 标题区（logo + 大标题 + 搜索 + 刷新 + 数字统计条） -->
-        <HeroHeader />
+        <!-- 自定义标题栏：可拖拽 + 右侧交通灯按钮 -->
+        <TitleBar />
 
-        <!-- 筛选条 -->
-        <FilterBar />
+        <div class="flex min-h-0 flex-1 flex-col px-7 pb-6">
+          <!-- Hero 标题区（logo + 大标题 + 统计块 + 设置） -->
+          <HeroHeader />
 
-        <!-- 进程列表 -->
-        <div class="min-h-0 flex-1 pt-4">
-          <ProcessList />
+          <!-- 筛选条 -->
+          <FilterBar />
+
+          <!-- 进程列表 -->
+          <div class="min-h-0 flex-1 pt-4">
+            <ProcessList />
+          </div>
         </div>
       </div>
     </n-message-provider>
