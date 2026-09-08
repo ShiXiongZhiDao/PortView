@@ -1,16 +1,10 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import { useConnectionsStore } from "../stores/connections";
-import { useTheme } from "../composables/useTheme";
+import SettingsModal from "./SettingsModal.vue";
 
 const store = useConnectionsStore();
-const { themeMode, setTheme } = useTheme();
-
-const themeOptions = [
-  { label: "跟随系统", value: "system" },
-  { label: "暗色", value: "dark" },
-  { label: "亮色", value: "light" },
-];
+const showSettings = ref(false);
 
 /** Hero 右侧统计块（彩色贴纸小块） */
 const stats = computed(() => [
@@ -46,7 +40,7 @@ const stats = computed(() => [
       </div>
     </div>
 
-    <!-- 右侧：统计块 + 主题切换 -->
+    <!-- 右侧：统计块 + 设置图标 -->
     <div class="flex shrink-0 items-center gap-3">
       <div
         v-for="s in stats"
@@ -61,7 +55,23 @@ const stats = computed(() => [
           {{ s.label }}
         </span>
       </div>
-      <n-select :value="themeMode" :options="themeOptions" class="ml-2 w-28" size="large" @update:value="setTheme" />
+
+      <!-- 设置图标按钮 -->
+      <button
+        class="pv-btn ml-2 flex h-11 w-11 items-center justify-center"
+        :style="{ background: 'var(--pv-card-2)', color: 'var(--pv-text)' }"
+        title="设置"
+        @click="showSettings = true"
+      >
+        <svg width="20" height="20" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true">
+          <path
+            d="M128 80a48 48 0 1 0 48 48 48.05 48.05 0 0 0-48-48Zm0 76a28 28 0 1 1 28-28 28 28 0 0 1-28 28Zm88.55-28c0-3.18-.14-6.32-.4-9.42l23.06-18a8 8 0 0 0 1.94-10.18l-21.8-37.76a8 8 0 0 0-9.7-3.52l-27.2 10.92a84.3 84.3 0 0 0-16.3-9.42l-4.14-29A8 8 0 0 0 154 16h-43.66a8 8 0 0 0-7.95 7.06l-4.14 29a84.3 84.3 0 0 0-16.3 9.42l-27.2-10.92a8 8 0 0 0-9.7 3.52L23.25 110.4a8 8 0 0 0 1.94 10.18l23.06 18a88.7 88.7 0 0 0 0 18.84l-23.06 18a8 8 0 0 0-1.94 10.18l21.8 37.76a8 8 0 0 0 9.7 3.52l27.2-10.92a84.3 84.3 0 0 0 16.3 9.42l4.14 29A8 8 0 0 0 110.34 240h43.32a8 8 0 0 0 7.95-7.06l4.14-29a84.3 84.3 0 0 0 16.3-9.42l27.2 10.92a8 8 0 0 0 9.7-3.52l21.8-37.76a8 8 0 0 0-1.94-10.18l-23.06-18c.26-3.1.4-6.24.4-9.42Z"
+          />
+        </svg>
+      </button>
     </div>
+
+    <!-- 设置弹窗 -->
+    <SettingsModal v-model:show="showSettings" />
   </div>
 </template>
