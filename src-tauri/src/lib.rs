@@ -1,11 +1,17 @@
 mod netinfo;
 
-use netinfo::ConnectionInfo;
+use netinfo::{ConnectionInfo, ProcessInfo};
 
 /// 获取全部 TCP/UDP 连接快照
 #[tauri::command]
 fn get_connections() -> Vec<ConnectionInfo> {
     netinfo::get_connections()
+}
+
+/// 获取系统全部进程（含无网络连接进程）及连接统计
+#[tauri::command]
+fn get_processes() -> Vec<ProcessInfo> {
+    netinfo::get_processes()
 }
 
 /// 结束指定 PID 的进程（taskkill /F）
@@ -33,7 +39,7 @@ fn kill_process(pid: u32) -> Result<String, String> {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![get_connections, kill_process])
+        .invoke_handler(tauri::generate_handler![get_connections, get_processes, kill_process])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
