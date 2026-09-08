@@ -1,30 +1,110 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from "vue";
-import { darkTheme, useOsTheme, useThemeVars } from "naive-ui";
+import { computed, onMounted } from "vue";
+import { darkTheme } from "naive-ui";
 import { useConnectionsStore } from "./stores/connections";
-import StatCards from "./components/StatCards.vue";
-import Toolbar from "./components/Toolbar.vue";
-import ProcessesTable from "./components/ProcessesTable.vue";
+import { useTheme } from "./composables/useTheme";
+import HeroHeader from "./components/HeroHeader.vue";
+import FilterBar from "./components/FilterBar.vue";
+import ProcessList from "./components/ProcessList.vue";
 
 const store = useConnectionsStore();
-const osTheme = useOsTheme();
-const themeVars = useThemeVars();
-
-type ThemeMode = "system" | "dark" | "light";
-const themeMode = ref<ThemeMode>(
-  (localStorage.getItem("port-view-theme") as ThemeMode) || "system",
-);
-const isDark = computed(() =>
-  themeMode.value === "system" ? osTheme.value === "dark" : themeMode.value === "dark",
-);
+const { isDark } = useTheme();
 const theme = computed(() => (isDark.value ? darkTheme : null));
-watch(themeMode, (v) => localStorage.setItem("port-view-theme", v));
 
-const themeOptions = [
-  { label: "跟随系统", value: "system" },
-  { label: "暗色", value: "dark" },
-  { label: "亮色", value: "light" },
-];
+/** LearnHub 风格 naive-ui 主题覆盖（亮/暗） */
+const themeOverrides = computed(() =>
+  isDark.value
+    ? {
+        common: {
+          primaryColor: "#22C55E",
+          primaryColorHover: "#4ADE80",
+          primaryColorPressed: "#16A34A",
+          primaryColorSuppl: "#22C55E",
+          successColor: "#22C55E",
+          errorColor: "#F87171",
+          warningColor: "#FBBF24",
+          infoColor: "#60A5FA",
+          bodyColor: "#0F172A",
+          cardColor: "#1E293B",
+          modalColor: "#1E293B",
+          popoverColor: "#1E293B",
+          tableColor: "transparent",
+          tableHeaderColor: "#1A2337",
+          textColorBase: "#F1F5F9",
+          textColor1: "#F1F5F9",
+          textColor2: "#CBD5E1",
+          textColor3: "#94A3B8",
+          borderColor: "#2B3648",
+          dividerColor: "#263041",
+          actionColor: "#172033",
+          inputColor: "#1E293B",
+          inputColorDisabled: "#182136",
+          hoverColor: "rgba(34,197,94,0.10)",
+          pressedColor: "rgba(34,197,94,0.18)",
+          borderRadius: "10px",
+          borderRadiusSmall: "8px",
+          borderRadiusMedium: "10px",
+          borderRadiusLarge: "14px",
+          fontFamily:
+            "'Nunito', 'Segoe UI', 'Microsoft YaHei', system-ui, sans-serif",
+          fontWeightStrong: "800",
+        },
+        Button: {
+          borderRadiusMedium: "999px",
+          borderRadiusSmall: "999px",
+          fontWeight: "800",
+        },
+        Input: { borderRadius: "10px" },
+        Select: { peers: { InternalSelection: { borderRadius: "10px" } } },
+        Tag: { borderRadius: "999px" },
+        Popover: { borderRadius: "14px" },
+      }
+    : {
+        common: {
+          primaryColor: "#16A34A",
+          primaryColorHover: "#22C55E",
+          primaryColorPressed: "#15803D",
+          primaryColorSuppl: "#22C55E",
+          successColor: "#16A34A",
+          errorColor: "#DC2626",
+          warningColor: "#D97706",
+          infoColor: "#2563EB",
+          bodyColor: "#F7F2E8",
+          cardColor: "#FFFFFF",
+          modalColor: "#FFFFFF",
+          popoverColor: "#FFFFFF",
+          tableColor: "transparent",
+          tableHeaderColor: "#F8F4EC",
+          textColorBase: "#1F2937",
+          textColor1: "#1F2937",
+          textColor2: "#4B5563",
+          textColor3: "#6B7280",
+          borderColor: "#EFE9DC",
+          dividerColor: "#F1EBDF",
+          actionColor: "#FAF7F0",
+          inputColor: "#FFFFFF",
+          inputColorDisabled: "#F4EFE4",
+          hoverColor: "rgba(22,163,74,0.07)",
+          pressedColor: "rgba(22,163,74,0.14)",
+          borderRadius: "10px",
+          borderRadiusSmall: "8px",
+          borderRadiusMedium: "10px",
+          borderRadiusLarge: "14px",
+          fontFamily:
+            "'Nunito', 'Segoe UI', 'Microsoft YaHei', system-ui, sans-serif",
+          fontWeightStrong: "800",
+        },
+        Button: {
+          borderRadiusMedium: "999px",
+          borderRadiusSmall: "999px",
+          fontWeight: "800",
+        },
+        Input: { borderRadius: "10px" },
+        Select: { peers: { InternalSelection: { borderRadius: "10px" } } },
+        Tag: { borderRadius: "999px" },
+        Popover: { borderRadius: "14px" },
+      },
+);
 
 onMounted(() => {
   store.refresh();
@@ -32,49 +112,23 @@ onMounted(() => {
 </script>
 
 <template>
-  <n-config-provider :theme="theme">
+  <n-config-provider :theme="theme" :theme-overrides="themeOverrides">
     <n-global-style />
     <n-message-provider placement="top-right">
       <div
-        class="flex h-screen flex-col overflow-hidden px-6 pb-4"
-        :style="{ background: themeVars.bodyColor }"
+        class="flex h-screen flex-col overflow-hidden px-7 py-6"
+        :data-theme="isDark ? 'dark' : 'light'"
+        :style="{ background: 'var(--pv-bg)' }"
       >
-        <!-- 标题栏 -->
-        <header class="flex h-16 shrink-0 items-center justify-between">
-          <div class="flex flex-col leading-tight">
-            <span
-              class="text-[10px] uppercase tracking-[0.25em]"
-              :style="{ color: themeVars.textColor3 }"
-            >
-              Windows Port Watcher
-            </span>
-            <span class="text-xl font-bold" :style="{ color: themeVars.textColor1 }">
-              port-view
-            </span>
-          </div>
-          <div class="flex items-center gap-3">
-            <n-select v-model:value="themeMode" :options="themeOptions" class="w-28" size="small" />
-            <n-button
-              type="primary"
-              size="medium"
-              round
-              :loading="store.loading"
-              @click="store.refresh()"
-            >
-              刷新
-            </n-button>
-          </div>
-        </header>
+        <!-- Hero 标题区（logo + 大标题 + 搜索 + 刷新 + 数字统计条） -->
+        <HeroHeader />
 
-        <!-- 统计卡片 -->
-        <StatCards />
+        <!-- 筛选条 -->
+        <FilterBar />
 
-        <!-- 搜索 / 筛选 -->
-        <Toolbar />
-
-        <!-- 数据表格：进程 + 连接合并视图 -->
-        <div class="min-h-0 flex-1 pt-3">
-          <ProcessesTable />
+        <!-- 进程列表 -->
+        <div class="min-h-0 flex-1 pt-4">
+          <ProcessList />
         </div>
       </div>
     </n-message-provider>

@@ -1,0 +1,190 @@
+/* ============================================================
+   port-view — LearnHub (educational-platform) 风格重绘
+   参考：https://uupm.cc/demo/educational-platform
+   - 贴纸风格：深色粗边框 (3px) + 偏移硬阴影 (4px 4px 0)
+   - 背景：米白 / 卡片：纯白 + 圆角 18px
+   - 主色：鲜绿 #16A34A；pill 标签（浅绿/浅蓝底 + 深色字 + 深色边框）
+   - 字体：Fredoka（标题/数字）+ Nunito（正文）
+   ============================================================ */
+
+/* ---------- 字体（本地化，离线可用） ---------- */
+@font-face {
+  font-family: "Fredoka";
+  src: url("/fonts/Fredoka-400.woff2") format("woff2");
+  font-weight: 300 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Nunito";
+  src: url("/fonts/Nunito-400.woff2") format("woff2");
+  font-weight: 300 900;
+  font-display: swap;
+}
+
+/* ---------- 设计 token（亮色默认） ---------- */
+:root {
+  --pv-bg: #f7f2e8; /* 米白背景 */
+  --pv-card: #ffffff; /* 纯白卡片 */
+  --pv-card-2: #faf7f0; /* 次级面（展开行底） */
+  --pv-border: #efe9dc; /* 极浅分隔线 */
+  --pv-stroke: #1f2937; /* 深色粗边框（贴纸描边） */
+  --pv-text: #1f2937; /* 标题/主文本 */
+  --pv-text-soft: #6b7280; /* 正文灰 */
+  --pv-text-faint: #9ca3af; /* 弱化文本 */
+  --pv-green: #16a34a; /* 主绿（按钮/强调） */
+  --pv-green-deep: #15803d;
+  --pv-green-bg: #dcfce7; /* 浅绿标签底 */
+  --pv-green-text: #166534; /* 深绿标签字 */
+  --pv-blue-bg: #dbeafe;
+  --pv-blue-text: #1d4ed8;
+  --pv-amber-bg: #fef3c7;
+  --pv-amber-text: #92400e;
+  --pv-violet-bg: #ede9fe;
+  --pv-violet-text: #5b21b6;
+  --pv-radius-lg: 20px;
+  --pv-radius-md: 14px;
+  --pv-radius-sm: 10px;
+  --pv-radius-pill: 999px;
+  /* 贴纸偏移阴影：边框同色硬偏移 */
+  --pv-sticker-shadow: 4px 4px 0 var(--pv-stroke);
+  --pv-sticker-shadow-sm: 3px 3px 0 var(--pv-stroke);
+  --pv-sticker-shadow-pressed: 1px 1px 0 var(--pv-stroke);
+}
+
+/* 暗色（深灰蓝变体，边框反转为浅色） */
+[data-theme="dark"] {
+  --pv-bg: #0f172a;
+  --pv-card: #1e293b;
+  --pv-card-2: #172033;
+  --pv-border: #2b3648;
+  --pv-stroke: #cbd5e1; /* 暗色用浅色描边 */
+  --pv-text: #f1f5f9;
+  --pv-text-soft: #94a3b8;
+  --pv-text-faint: #64748b;
+  --pv-green: #22c55e;
+  --pv-green-deep: #4ade80;
+  --pv-green-bg: #14532d;
+  --pv-green-text: #86efac;
+  --pv-blue-bg: #1e3a5f;
+  --pv-blue-text: #93c5fd;
+  --pv-amber-bg: #3a3220;
+  --pv-amber-text: #fcd34d;
+  --pv-violet-bg: #2e2a45;
+  --pv-violet-text: #c4b5fd;
+}
+
+/* ---------- 工具类 ---------- */
+.font-heading {
+  font-family: "Fredoka", "Nunito", "Segoe UI", "Microsoft YaHei", sans-serif;
+}
+
+/* 贴纸卡片：白底 + 深色粗边框 + 偏移硬阴影（LearnHub 课程卡同款） */
+.pv-card {
+  background: var(--pv-card);
+  border: 3px solid var(--pv-stroke);
+  border-radius: var(--pv-radius-lg);
+  box-shadow: var(--pv-sticker-shadow);
+}
+
+/* pill 标签（"New: AI-Powered Learning" / "Popular Courses" 同款：浅色底 + 深色描边） */
+.pv-pill {
+  display: inline-flex;
+  align-items: center;
+  border: 2px solid var(--pv-stroke);
+  border-radius: var(--pv-radius-pill);
+  padding: 2px 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+/* 贴纸按钮：深色描边 + 偏移阴影 */
+.pv-btn {
+  border: 3px solid var(--pv-stroke);
+  border-radius: var(--pv-radius-pill);
+  box-shadow: var(--pv-sticker-shadow-sm);
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 0.1s ease-out, box-shadow 0.1s ease-out;
+}
+.pv-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: var(--pv-sticker-shadow-pressed);
+}
+
+/* 按压反馈（用于卡片等可点击元素） */
+.pv-press {
+  transition: transform 0.1s ease-out, box-shadow 0.1s ease-out;
+}
+.pv-press:active {
+  transform: translate(2px, 2px);
+  box-shadow: var(--pv-sticker-shadow-pressed);
+}
+
+/* ---------- naive-ui 组件贴纸边框覆盖 ---------- */
+
+/* 所有按钮：深色粗边框 + 偏移阴影 */
+.n-button {
+  border-width: 3px !important;
+  border-style: solid !important;
+  border-color: var(--pv-stroke) !important;
+  box-shadow: var(--pv-sticker-shadow-sm) !important;
+  font-weight: 800 !important;
+  transition: transform 0.1s ease-out, box-shadow 0.1s ease-out !important;
+}
+.n-button:active {
+  transform: translate(2px, 2px) !important;
+  box-shadow: var(--pv-sticker-shadow-pressed) !important;
+}
+.n-button--disabled {
+  box-shadow: none !important;
+  opacity: 0.5;
+}
+
+/* 输入框：深色粗边框 */
+.n-input__wrapper {
+  border-width: 3px !important;
+  border-style: solid !important;
+  border-color: var(--pv-stroke) !important;
+  box-shadow: none !important;
+  border-radius: 12px !important;
+}
+.n-input__wrapper:hover {
+  border-color: var(--pv-stroke) !important;
+}
+
+/* 下拉选择：深色粗边框 */
+.n-base-selection {
+  border-width: 3px !important;
+  border-style: solid !important;
+  border-color: var(--pv-stroke) !important;
+  box-shadow: none !important;
+  border-radius: 12px !important;
+}
+.n-base-selection:hover {
+  border-color: var(--pv-stroke) !important;
+}
+
+/* 分页按钮：保持贴纸风格但阴影小一些 */
+.n-pagination .n-button {
+  box-shadow: 2px 2px 0 var(--pv-stroke) !important;
+}
+
+/* 弹出确认框 */
+.n-popover {
+  border: 3px solid var(--pv-stroke) !important;
+  border-radius: 14px !important;
+  box-shadow: 4px 4px 0 var(--pv-stroke) !important;
+}
+
+/* ---------- 页面基础 ---------- */
+html,
+body,
+#app {
+  height: 100%;
+}
+body {
+  background: var(--pv-bg);
+  font-family: "Nunito", "Segoe UI", "Microsoft YaHei", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
