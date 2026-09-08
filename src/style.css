@@ -23,10 +23,10 @@
 
 /* ---------- 设计 token（亮色默认） ---------- */
 :root {
-  --pv-bg: #f7f2e8; /* 米白背景 */
+  --pv-bg: #ffffff; /* 纯白背景 */
   --pv-card: #ffffff; /* 纯白卡片 */
-  --pv-card-2: #faf7f0; /* 次级面（展开行底） */
-  --pv-border: #efe9dc; /* 极浅分隔线 */
+  --pv-card-2: #f8f9fb; /* 次级面（展开行/表头底，极浅灰） */
+  --pv-border: #eef0f3; /* 极浅分隔线 */
   --pv-stroke: #1f2937; /* 深色粗边框（贴纸描边） */
   --pv-text: #1f2937; /* 标题/主文本 */
   --pv-text-soft: #6b7280; /* 正文灰 */
