@@ -2,10 +2,17 @@ import { computed, ref } from "vue";
 import { defineStore } from "pinia";
 import { invoke } from "@tauri-apps/api/core";
 import { pinyin } from "pinyin-pro";
-import type { ConnectionInfo } from "../types";
+import type { ConnectionInfo, ProcessInfo } from "../types";
 
-/** 带预计算搜索索引的行 */
+/** 带预计算搜索索引的连接行 */
 interface Row extends ConnectionInfo {
+  _searchIndex: string;
+}
+
+/** 带预计算搜索索引的进程行（含聚合端口列表与状态集合） */
+interface ProcessRow extends ProcessInfo {
+  _ports: number[];
+  _states: Set<string>;
   _searchIndex: string;
 }
 
@@ -15,11 +22,16 @@ export type StatusFilter = "全部" | "LISTENING" | "ESTABLISHED" | "TIME_WAIT" 
 /** 已知状态集合，"其他"即不属于这些状态的条目（含 UDP 的 "-" 与 SYN_SENT 等） */
 const KNOWN_STATUSES = ["LISTENING", "ESTABLISHED", "TIME_WAIT", "CLOSE_WAIT"];
 
-/** 构建单行模糊搜索索引：端口/进程名/PID/路径/软件名/拼音（全拼+首字母） */
-function buildSearchIndex(r: ConnectionInfo): string {
-  const text = `${r.processName} ${r.softwareName} ${r.processPath}`;
+/** 文本 → 拼音索引（全拼 + 首字母） */
+function pinyinIndex(text: string): string {
   const full = pinyin(text, { toneType: "none", type: "array" }).join("");
   const initial = pinyin(text, { pattern: "first", toneType: "none", type: "array" }).join("");
+  return `${full} ${initial}`;
+}
+
+/** 构建连接行模糊搜索索引：端口/进程名/PID/路径/软件名/拼音 */
+function buildSearchIndex(r: ConnectionInfo): string {
+  const text = `${r.processName} ${r.softwareName} ${r.processPath}`;
   return [
     r.protocol,
     String(r.localPort),
@@ -31,15 +43,33 @@ function buildSearchIndex(r: ConnectionInfo): string {
     r.processPath,
     r.softwareName,
     String(r.pid),
-    full,
-    initial,
+    pinyinIndex(text),
+  ]
+    .join(" ")
+    .toLowerCase();
+}
+
+/** 构建进程行模糊搜索索引：进程名/PID/路径/软件名/拼音/端口 */
+function buildProcessSearchIndex(p: ProcessInfo, ports: number[]): string {
+  const text = `${p.name} ${p.software} ${p.path}`;
+  return [
+    p.name,
+    p.path,
+    p.software,
+    String(p.pid),
+    pinyinIndex(text),
+    ...ports.map(String),
   ]
     .join(" ")
     .toLowerCase();
 }
 
 export const useConnectionsStore = defineStore("connections", () => {
+  // 连接数据
   const rows = ref<Row[]>([]);
+  // 进程数据（含聚合端口）
+  const processes = ref<ProcessRow[]>([]);
+
   const loading = ref(false);
   const error = ref("");
   const lastUpdated = ref<number | null>(null);
@@ -49,11 +79,32 @@ export const useConnectionsStore = defineStore("connections", () => {
   const protocol = ref<ProtocolFilter>("全部");
   const status = ref<StatusFilter>("全部");
 
-  async function refresh() {
+  /** 合并视图数据源：进程列表 + 连接明细一次取回 */
+  async function fetchAll() {
     loading.value = true;
     try {
-      const data = await invoke<ConnectionInfo[]>("get_connections");
-      rows.value = data.map((r) => ({ ...r, _searchIndex: buildSearchIndex(r) }));
+      const [connData, procData] = await Promise.all([
+        invoke<ConnectionInfo[]>("get_connections"),
+        invoke<ProcessInfo[]>("get_processes"),
+      ]);
+      rows.value = connData.map((r) => ({ ...r, _searchIndex: buildSearchIndex(r) }));
+      const infoByPid = new Map<number, { ports: Set<number>; states: Set<string> }>();
+      for (const r of connData) {
+        const info = infoByPid.get(r.pid) ?? { ports: new Set<number>(), states: new Set<string>() };
+        info.ports.add(r.localPort);
+        info.states.add(r.state);
+        infoByPid.set(r.pid, info);
+      }
+      processes.value = procData.map((p) => {
+        const info = infoByPid.get(p.pid);
+        const ports = info ? Array.from(info.ports).sort((a, b) => a - b) : [];
+        return {
+          ...p,
+          _ports: ports,
+          _states: info?.states ?? new Set<string>(),
+          _searchIndex: buildProcessSearchIndex(p, ports),
+        };
+      });
       lastUpdated.value = Date.now();
       error.value = "";
     } catch (e) {
@@ -63,36 +114,45 @@ export const useConnectionsStore = defineStore("connections", () => {
     }
   }
 
-  /** 过滤后的行（搜索 + 协议 + 状态叠加） */
-  const filteredRows = computed(() => {
+  /** 手动刷新（进程 + 连接一并刷新） */
+  async function refresh() {
+    await fetchAll();
+  }
+
+  /** 过滤后的进程行：搜索 + 协议 + 状态叠加（协议/状态映射到进程维度） */
+  const filteredProcesses = computed(() => {
     const q = search.value.trim().toLowerCase();
-    return rows.value.filter((r) => {
-      if (protocol.value !== "全部" && r.protocol !== protocol.value) return false;
+    return processes.value.filter((p) => {
+      if (protocol.value === "TCP" && p.tcp === 0) return false;
+      if (protocol.value === "UDP" && p.udp === 0) return false;
       if (status.value !== "全部") {
         const ok =
           status.value === "其他"
-            ? !KNOWN_STATUSES.includes(r.state)
-            : r.state === status.value;
+            ? [...p._states].some((s) => !KNOWN_STATUSES.includes(s))
+            : p._states.has(status.value);
         if (!ok) return false;
       }
-      if (q && !r._searchIndex.includes(q)) return false;
+      if (q && !p._searchIndex.includes(q)) return false;
       return true;
     });
   });
 
-  /** 统计口径（基于全部数据）：TCP 总数 / UDP 总数 / 监听端口 / 去重进程数 */
+  /** 某进程的连接明细（展开行用，不随搜索过滤） */
+  function connectionsOf(pid: number): Row[] {
+    return rows.value.filter((r) => r.pid === pid);
+  }
+
+  /** 统计口径：全部进程 + 连接聚合 */
   const stats = computed(() => {
     let tcp = 0;
     let udp = 0;
     let listening = 0;
-    const pids = new Set<number>();
     for (const r of rows.value) {
       if (r.protocol === "TCP") tcp++;
       else if (r.protocol === "UDP") udp++;
       if (r.state === "LISTENING") listening++;
-      pids.add(r.pid);
     }
-    return { tcp, udp, listening, procs: pids.size };
+    return { tcp, udp, listening, procs: processes.value.length };
   });
 
   /** 结束进程（taskkill /F），返回结果或抛出错误 */
@@ -102,13 +162,15 @@ export const useConnectionsStore = defineStore("connections", () => {
 
   return {
     rows,
+    processes,
     loading,
     error,
     lastUpdated,
     search,
     protocol,
     status,
-    filteredRows,
+    filteredProcesses,
+    connectionsOf,
     stats,
     refresh,
     kill,

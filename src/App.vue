@@ -4,7 +4,7 @@ import { darkTheme, useOsTheme, useThemeVars } from "naive-ui";
 import { useConnectionsStore } from "./stores/connections";
 import StatCards from "./components/StatCards.vue";
 import Toolbar from "./components/Toolbar.vue";
-import ConnectionsTable from "./components/ConnectionsTable.vue";
+import ProcessesTable from "./components/ProcessesTable.vue";
 
 const store = useConnectionsStore();
 const osTheme = useOsTheme();
@@ -72,9 +72,9 @@ onMounted(() => {
         <!-- 搜索 / 筛选 -->
         <Toolbar />
 
-        <!-- 数据表格 -->
+        <!-- 数据表格：进程 + 连接合并视图 -->
         <div class="min-h-0 flex-1 pt-3">
-          <ConnectionsTable />
+          <ProcessesTable />
         </div>
       </div>
     </n-message-provider>

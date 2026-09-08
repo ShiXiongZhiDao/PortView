@@ -14,6 +14,10 @@ use windows::Win32::NetworkManagement::IpHelper::{
 use windows::Win32::Storage::FileSystem::{
     GetFileVersionInfoSizeW, GetFileVersionInfoW, VerQueryValueW,
 };
+use windows::Win32::System::Diagnostics::ToolHelp::{
+    CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W,
+    TH32CS_SNAPPROCESS,
+};
 use windows::Win32::System::Threading::{
     OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_WIN32, PROCESS_QUERY_LIMITED_INFORMATION,
 };
@@ -198,6 +202,103 @@ fn tcp_state_name(state: u32) -> String {
     .to_string()
 }
 
+/// 单个进程的展示信息（含连接统计）
+#[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ProcessInfo {
+    pub pid: u32,
+    /// 进程名（exe 文件名，如 `Everything.exe`）
+    pub name: String,
+    /// 完整路径（获取失败为空）
+    pub path: String,
+    /// 软件名（获取失败为空）
+    pub software: String,
+    /// TCP 连接数
+    pub tcp: u32,
+    /// UDP 端点数
+    pub udp: u32,
+    /// 监听端口数（LISTENING）
+    pub listening: u32,
+}
+
+/// 获取系统全部进程（含无网络连接的进程），附连接统计
+pub fn get_processes() -> Vec<ProcessInfo> {
+    // 1. 枚举全部进程（ToolHelp 快照）
+    let mut procs: Vec<(u32, String)> = Vec::new();
+    unsafe {
+        if let Ok(snapshot) = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) {
+            let mut entry = PROCESSENTRY32W::default();
+            entry.dwSize = std::mem::size_of::<PROCESSENTRY32W>() as u32;
+            if Process32FirstW(snapshot, &mut entry).is_ok() {
+                loop {
+                    let name = wide_string(&entry.szExeFile);
+                    procs.push((entry.th32ProcessID, name));
+                    if Process32NextW(snapshot, &mut entry).is_err() {
+                        break;
+                    }
+                }
+            }
+            let _ = CloseHandle(snapshot);
+        }
+    }
+
+    // 2. 按 PID 聚合连接统计（复用连接采集）
+    let mut agg: std::collections::HashMap<u32, (u32, u32, u32)> = std::collections::HashMap::new();
+    for c in get_connections() {
+        let e = agg.entry(c.pid).or_insert((0, 0, 0));
+        if c.protocol == "TCP" {
+            e.0 += 1;
+            if c.state == "LISTENING" {
+                e.2 += 1;
+            }
+        } else if c.protocol == "UDP" {
+            e.1 += 1;
+        }
+    }
+
+    // 3. 组装：路径/软件名 + 连接计数
+    let mut result: Vec<ProcessInfo> = procs
+        .into_iter()
+        .map(|(pid, name)| {
+            let path = get_process_path(pid);
+            let software = path
+                .as_ref()
+                .and_then(|p| get_software_name(p))
+                .unwrap_or_default();
+            let (tcp, udp, listening) = agg.get(&pid).copied().unwrap_or((0, 0, 0));
+            ProcessInfo {
+                pid,
+                name,
+                path: path.unwrap_or_default(),
+                software,
+                tcp,
+                udp,
+                listening,
+            }
+        })
+        .collect();
+
+    // 补上 ToolHelp 快照可能遗漏的系统进程
+    if !result.iter().any(|p| p.pid == 4) {
+        result.push(ProcessInfo {
+            pid: 4,
+            name: "System".into(),
+            path: String::new(),
+            software: String::new(),
+            tcp: 0,
+            udp: 0,
+            listening: 0,
+        });
+    }
+    result
+}
+
+/// 宽字符数组 → String（截断到首个 NUL）
+fn wide_string(buf: &[u16]) -> String {
+    let end = buf.iter().position(|&c| c == 0).unwrap_or(buf.len());
+    String::from_utf16_lossy(&buf[..end])
+}
+
 /// 根据 PID 获取（进程名, 完整路径, 软件名）
 fn process_info(pid: u32) -> (String, String, String) {
     if pid == 0 {
@@ -275,6 +376,31 @@ mod tests {
         let tcp = conns.iter().filter(|c| c.protocol == "TCP").count();
         let udp = conns.iter().filter(|c| c.protocol == "UDP").count();
         println!("合计 {} 条：TCP={} UDP={}", conns.len(), tcp, udp);
+    }
+
+    #[test]
+    fn test_get_processes() {
+        let procs = get_processes();
+        assert!(!procs.is_empty(), "应至少枚举到系统进程");
+        // 应包含当前进程
+        let me = std::process::id();
+        let mine = procs.iter().find(|p| p.pid == me);
+        assert!(mine.is_some(), "应包含当前测试进程 pid={}", me);
+        // 应包含 System (pid 4)
+        assert!(procs.iter().any(|p| p.pid == 4), "应包含 System 进程");
+        // 连接统计与连接总数一致
+        let conns = get_connections();
+        let sum_tcp: u32 = procs.iter().map(|p| p.tcp).sum();
+        let sum_udp: u32 = procs.iter().map(|p| p.udp).sum();
+        assert_eq!(sum_tcp, conns.iter().filter(|c| c.protocol == "TCP").count() as u32);
+        assert_eq!(sum_udp, conns.iter().filter(|c| c.protocol == "UDP").count() as u32);
+        println!("全部进程 {} 个；TCP 合计 {}，UDP 合计 {}", procs.len(), sum_tcp, sum_udp);
+        for p in procs.iter().take(6) {
+            println!(
+                "pid={:<7} tcp={:<4} udp={:<4} listen={:<4} {:<24} sw={} path={}",
+                p.pid, p.tcp, p.udp, p.listening, p.name, p.software, p.path
+            );
+        }
     }
 }
 

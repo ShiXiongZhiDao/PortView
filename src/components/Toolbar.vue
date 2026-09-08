@@ -21,6 +21,8 @@ const statusOptions = [
   { label: "其他", value: "其他" },
 ];
 
+const searchPlaceholder = "搜索：进程名、PID、路径、软件名、拼音、端口";
+
 const updatedText = computed(() => {
   if (!store.lastUpdated) return "--:--:--";
   const d = new Date(store.lastUpdated);
@@ -35,13 +37,13 @@ const updatedText = computed(() => {
       v-model:value="store.search"
       clearable
       size="medium"
-      placeholder="搜索：端口、进程名、PID、路径、软件名、拼音"
+      :placeholder="searchPlaceholder"
       class="w-[380px]"
     />
     <n-select v-model:value="store.protocol" :options="protocolOptions" class="w-24" />
     <n-select v-model:value="store.status" :options="statusOptions" class="w-40" />
     <div class="ml-auto whitespace-nowrap text-xs tabular-nums" :style="{ color: themeVars.textColor3 }">
-      当前显示 {{ store.filteredRows.length }} 条，{{ updatedText }} 更新
+      当前显示 {{ store.filteredProcesses.length }} 个进程，{{ updatedText }} 更新
     </div>
   </div>
 </template>
