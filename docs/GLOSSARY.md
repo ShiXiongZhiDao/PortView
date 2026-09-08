@@ -16,4 +16,6 @@
 | 刷新 | 点击"刷新"按钮重新调用 Rust 采集接口获取最新进程与连接快照；"结束进程"完成后自动刷新一次 |
 | 结束进程 | 对行内 PID 调用 `taskkill /F` 终止进程，执行前需确认 |
 | 合并视图 | 进程与连接合并在同一表格：每行一个进程（含端口摘要），行展开显示该进程全部连接明细 |
+| LearnHub 风格 | 参考 educational-platform demo 的扁平清新视觉语言：米白底 + 白卡 + 轻阴影 + 鲜绿主色 + pill 标签/按钮，Fredoka + Nunito 字体 |
+| 设计系统 | `docs/design-system/MASTER.md`：色彩/字体/形状/组件 token 的全局基准，由 UI/UX Pro Max 技能指导生成 |
 | requireAdministrator | Windows 清单提权声明，应用以管理员权限运行 |
