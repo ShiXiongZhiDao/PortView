@@ -195,3 +195,4 @@ Rust 侧暴露 5 个 Tauri 命令（`lib.rs`）：
 11. **托盘语言同步**：托盘菜单文案在 Rust 侧（`LANG` 静态 + `tray_labels`），前端 `setLang` 会 `invoke("set_language")` 重建菜单；新增托盘文案要同时维护中英两套。
 12. **列宽持久化**：`ProcessList.vue` 列宽存 `localStorage["port-view-col-widths"]`，损坏/越界数据自动回退默认值。
 13. **README 已拆分为两份**：`README.md`（英文）与 `README.zh-CN.md`（中文），改 README 时两边都要更新。
+14. **`open_in_explorer` 必须用 `raw_arg`**：explorer 定位文件依赖 `/select,"路径"` 精确语法（含引号）。用普通 `.arg()` 传参会被 Rust 二次转义，表现为"只打开文件管理器、不选中文件"。改该函数时不要去掉 `std::os::windows::process::CommandExt::raw_arg`。

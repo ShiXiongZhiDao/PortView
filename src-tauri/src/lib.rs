@@ -52,10 +52,15 @@ fn set_language(app: tauri::AppHandle, lang: String) {
 }
 
 /// 在资源管理器中定位并选中程序文件（右键菜单"打开程序地址"）
+///
+/// 必须用 `raw_arg` 原样传递 `/select,"路径"`：explorer 依赖该精确语法（含引号），
+/// 若用普通 `.arg()` 传参，Rust 会再次转义/加引号，导致只打开文件管理器而不选中文件。
 #[tauri::command]
 fn open_in_explorer(path: String) -> Result<(), String> {
+    use std::os::windows::process::CommandExt;
+    let arg = format!("/select,\"{}\"", path);
     std::process::Command::new("explorer")
-        .arg(format!("/select,\"{}\"", path))
+        .raw_arg(arg)
         .spawn()
         .map(|_| ())
         .map_err(|e| format!("无法打开资源管理器：{}", e))
