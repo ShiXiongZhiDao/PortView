@@ -24,7 +24,7 @@ Built with **Tauri 2 + Vue 3 + TypeScript + Vite + UnoCSS + Pinia + naive-ui**.
 - **Light / Dark / System theme**, persisted.
 - **Frameless custom window** — macOS-style "traffic-light" controls (minimize / maximize / close) on the right, a draggable title region, and rounded window corners.
 - **Check for updates** — queries the Gitee Releases API, compares semantic versions, and links to the new release.
-- **Settings tabs** — General / Repositories / Update / Sponsor / About, in a fixed-size dialog.
+- **Settings tabs** — General / Sponsor / About; version info, update check and the repository links all live in **About**, and the dialog keeps a fixed size to avoid layout jumps.
 
 ## 🧱 Tech Stack
 
@@ -151,7 +151,7 @@ No license file has been added yet. All rights reserved by the author until one 
 - **亮色 / 暗色 / 跟随系统**主题，并持久化。
 - **无边框自定义窗体**：右侧 macOS 风格"交通灯"按钮（最小化 / 最大化 / 关闭）、可拖拽标题区、窗体圆角。
 - **检查更新**：请求 Gitee Releases API，做语义版本对比，并提供新版本下载入口。
-- **设置页 Tab 化**：通用 / 仓库 / 升级 / 赞助 / 关于，弹窗尺寸固定不跳动。
+- **设置页 Tab 化**：通用 / 赞助 / 关于三个 Tab；版本、检查更新与代码仓库入口统一收在**关于**页，弹窗尺寸固定不跳动。
 
 ## 🧱 技术栈
 
