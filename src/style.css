@@ -195,3 +195,10 @@ body {
   font-family: "Nunito", "Segoe UI", "Microsoft YaHei", sans-serif;
   -webkit-font-smoothing: antialiased;
 }
+
+/* 桌面工具型界面：禁止长按/拖拽选中页面文本（输入框内仍可正常选中复制） */
+html,
+body {
+  user-select: none;
+  -webkit-user-select: none;
+}
