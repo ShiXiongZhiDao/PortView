@@ -116,7 +116,8 @@ onMounted(() => {
   <n-config-provider :theme="theme" :theme-overrides="themeOverrides">
     <n-global-style />
     <n-message-provider placement="top-right">
-      <div
+      <n-dialog-provider>
+        <div
         class="flex h-screen flex-col overflow-hidden rounded-[14px]"
         :data-theme="isDark ? 'dark' : 'light'"
         :style="{ background: 'var(--pv-bg)' }"
@@ -137,6 +138,7 @@ onMounted(() => {
           </div>
         </div>
       </div>
+      </n-dialog-provider>
     </n-message-provider>
   </n-config-provider>
 </template>

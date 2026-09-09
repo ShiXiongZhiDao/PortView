@@ -1,4 +1,5 @@
 import { ref } from "vue";
+import { invoke } from "@tauri-apps/api/core";
 
 export type Lang = "zh" | "en";
 
@@ -39,6 +40,8 @@ const zh: Dict = {
   "confirm.kill": "确认结束进程 {name}（PID {pid}）？",
   "empty.title": "没有匹配的进程",
   "empty.tip": "试试调整搜索关键词或筛选条件",
+  "ctx.openLocation": "打开程序地址",
+  "ctx.noPath": "无法获取程序路径",
   "settings.title": "设置",
   "settings.tab.general": "通用",
   "settings.tab.repos": "仓库",
@@ -113,6 +116,8 @@ const en: Dict = {
   "confirm.kill": "Kill process {name} (PID {pid})?",
   "empty.title": "No matching process",
   "empty.tip": "Try adjusting the keyword or filters",
+  "ctx.openLocation": "Open file location",
+  "ctx.noPath": "Program path unavailable",
   "settings.title": "Settings",
   "settings.tab.general": "General",
   "settings.tab.repos": "Repos",
@@ -158,6 +163,8 @@ export function useI18n() {
   function setLang(l: Lang) {
     lang.value = l;
     localStorage.setItem("port-view-lang", l);
+    // 同步系统托盘菜单语言（Rust 侧 set_language 重建菜单）
+    invoke("set_language", { lang: l }).catch(() => {});
   }
   /** 翻译函数：渲染期调用会收集 lang 依赖，切换语言自动重渲染 */
   function t(key: string, vars?: Record<string, string | number>): string {

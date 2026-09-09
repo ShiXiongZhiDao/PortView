@@ -1,6 +1,13 @@
 mod netinfo;
 
 use netinfo::{ConnectionInfo, ProcessInfo};
+use std::sync::Mutex;
+use tauri::menu::{Menu, MenuItem};
+use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
+use tauri::Manager;
+
+/// 当前界面语言（"zh"/"en"），用于系统托盘菜单文案同步
+static LANG: Mutex<&'static str> = Mutex::new("zh");
 
 /// 获取全部 TCP/UDP 连接快照
 #[tauri::command]
@@ -33,6 +40,89 @@ fn kill_process(pid: u32) -> Result<String, String> {
             msg
         })
     }
+}
+
+/// 设置界面语言，并同步重建系统托盘菜单文案（"zh"/"en"）
+#[tauri::command]
+fn set_language(app: tauri::AppHandle, lang: String) {
+    if let Ok(mut g) = LANG.lock() {
+        *g = if lang == "en" { "en" } else { "zh" };
+    }
+    let _ = rebuild_tray(&app);
+}
+
+/// 在资源管理器中定位并选中程序文件（右键菜单"打开程序地址"）
+#[tauri::command]
+fn open_in_explorer(path: String) -> Result<(), String> {
+    std::process::Command::new("explorer")
+        .arg(format!("/select,\"{}\"", path))
+        .spawn()
+        .map(|_| ())
+        .map_err(|e| format!("无法打开资源管理器：{}", e))
+}
+
+/* ---------- 系统托盘 ---------- */
+
+/// 切换主窗口显示/隐藏（托盘左键与"显示/隐藏"菜单项共用）
+fn toggle_main_window(app: &tauri::AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        if window.is_visible().unwrap_or(false) {
+            let _ = window.hide();
+        } else {
+            let _ = window.show();
+            let _ = window.set_focus();
+        }
+    }
+}
+
+/// 按当前语言生成托盘菜单文案
+fn tray_labels() -> (&'static str, &'static str) {
+    let lang = LANG.lock().map(|g| *g).unwrap_or("zh");
+    if lang == "en" {
+        ("Show / Hide", "Quit")
+    } else {
+        ("显示 / 隐藏", "退出")
+    }
+}
+
+/// 重建托盘菜单（语言切换后调用，实现中英同步）
+fn rebuild_tray(app: &tauri::AppHandle) -> tauri::Result<()> {
+    let (toggle_text, quit_text) = tray_labels();
+    let toggle = MenuItem::with_id(app, "toggle", toggle_text, true, None::<&str>)?;
+    let quit = MenuItem::with_id(app, "quit", quit_text, true, None::<&str>)?;
+    let menu = Menu::with_items(app, &[&toggle, &quit])?;
+    if let Some(tray) = app.tray_by_id("main") {
+        tray.set_menu(Some(menu))?;
+    }
+    Ok(())
+}
+
+/// 创建系统托盘（图标 + 菜单 + 左键切换窗口）
+fn setup_tray(app: &tauri::AppHandle) -> tauri::Result<()> {
+    let Some(icon) = app.default_window_icon() else {
+        return Ok(());
+    };
+    TrayIconBuilder::new()
+        .icon(icon.clone())
+        .show_menu_on_left_click(false)
+        .on_menu_event(|app, event| match event.id.as_ref() {
+            "toggle" => toggle_main_window(app),
+            "quit" => app.exit(0),
+            _ => {}
+        })
+        .on_tray_icon_event(|tray, event| {
+            if let TrayIconEvent::Click {
+                button: MouseButton::Left,
+                button_state: MouseButtonState::Up,
+                ..
+            } = event
+            {
+                toggle_main_window(tray.app_handle());
+            }
+        })
+        .build(app)?;
+    rebuild_tray(app)?;
+    Ok(())
 }
 
 /// Windows 11：为无边框窗口设置系统级圆角（DWMWA_WINDOW_CORNER_PREFERENCE）。
@@ -69,15 +159,19 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![get_connections, get_processes, kill_process])
+        .invoke_handler(tauri::generate_handler![
+            get_connections,
+            get_processes,
+            kill_process,
+            set_language,
+            open_in_explorer
+        ])
         .setup(|app| {
             #[cfg(target_os = "windows")]
-            {
-                use tauri::Manager;
-                if let Some(window) = app.get_webview_window("main") {
-                    apply_window_round(&window);
-                }
+            if let Some(window) = app.get_webview_window("main") {
+                apply_window_round(&window);
             }
+            let _ = setup_tray(app.handle());
             Ok(())
         })
         .run(tauri::generate_context!())
