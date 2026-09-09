@@ -20,16 +20,14 @@ Built with **Tauri 2 + Vue 3 + TypeScript + Vite + UnoCSS + Pinia + naive-ui**.
 - **Per-process memory & CPU** — physical working set and CPU percentage (same convention as Task Manager) for each process. Click the **CPU / Memory** column header to sort; results are sorted by **CPU descending by default**.
 - **Resizable columns** — drag any column header edge to adjust its width; widths are remembered between launches.
 - **Right-click context menu** — on any process row: **Open file location** (reveals the program in Explorer) and **Kill process** (with confirmation).
-- **System tray** — minimize the window to the tray, show it from the tray menu (or toggle by left-clicking the icon), and quit from the tray. Closing the window sends it to the tray instead of quitting. The tray menu follows the app language automatically.
 - **Fuzzy search** — match by process name, software name, full path, PID, port, and Chinese **pinyin / initials** (powered by `pinyin-pro`).
 - **Filters** — filter by protocol (All / TCP / UDP) and by connection state (LISTENING / ESTABLISHED / TIME_WAIT / CLOSE_WAIT / Other), stacked with the search query.
 - **Manual refresh** — data is a snapshot taken only when you press **Refresh** (or after killing a process); there is no background polling.
 - **Terminate process** — `taskkill /F` with a confirmation popover; critical system processes get an extra red warning.
 - **Bilingual UI** — switch between 简体中文 and English in Settings; the choice is persisted (the tray menu follows it too).
 - **Light / Dark / System theme**, persisted.
-- **Frameless custom window** — macOS-style "traffic-light" controls (minimize / maximize / close) on the right, a draggable title region, and rounded window corners.
 - **Check for updates** — queries the Gitee Releases API, compares semantic versions, and links to the new release.
-- **Settings tabs** — General / Sponsor / About. **Sponsor** holds the QR codes, the "every bit counts" donation line, the WeChat Official Account / Mini Program ("师兄知道") and the repository links; **About** holds version info, the update check and the tech-stack note. The dialog keeps a fixed size to avoid layout jumps.
+
 
 ## 🧱 Tech Stack
 
@@ -84,10 +82,6 @@ The NSIS installer is emitted under `target/release/bundle/nsis/` as **`PortView
 4. Right-click a process row to **open its file location** or **kill** it; click **Connections** on a row to expand its raw endpoints, or click **Kill** to terminate it after confirmation.
 5. Open **Settings** via the gear icon to change theme/language, open the repository, check for updates, or view version info.
 
-### Window & tray
-
-- The native title bar is removed. Drag the window from the thin strip at the very top; use the three traffic-light buttons on the upper-right — yellow = minimize, green = maximize/restore, red = **close to tray**.
-- When the window is closed, the app keeps running in the **system tray**. Left-click the tray icon to show / hide the window; right-click it for **Show** and **Quit**. Use **Quit** to fully exit the app.
 
 ## 🔒 Why administrator? <a id="-why-administrator-english"></a>
 
@@ -118,20 +112,7 @@ port-view/
 │  └─ tauri.conf.json
 ├─ public/
 │  ├─ fonts/                 # Fredoka / Nunito (self-hosted)
-│  └─ qr/                    # Sponsor QR codes
-├─ AGENTS.md                 # Guidelines for AI coding agents / contributors
-└─ docs/                     # ADRs, glossary and design-system tokens
 ```
-
-## 📐 Design & Architecture Notes
-
-Design decisions are recorded as Architecture Decision Records under [`docs/`](docs/):
-
-- **ADR-001** Tech stack & project layout
-- **ADR-002** Network/process data collection (WinAPI)
-- **ADR-003** Process termination & privilege model
-- **ADR-004** Frontend interaction model (layout, i18n, theme, settings, window)
-- **ADR-005** Per-process memory/CPU collection & sorting
 
 ## 📄 License
 
