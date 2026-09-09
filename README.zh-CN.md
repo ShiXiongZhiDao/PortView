@@ -112,6 +112,33 @@ port-view/
 ```
 
 
+
 ## 📄 许可证
 
-当前尚未添加 LICENSE 文件；在提供之前，著作权归作者所有。
+本项目基于 [MIT License](LICENSE) 开源——你可以自由使用、修改、分发（含商用），仅需保留版权声明。
+
+## ☕ 支持作者
+
+如果这个小工具帮到了你，可以扫码请师兄喝杯水 —— 你的支持是持续改进的动力：
+
+<table>
+  <tr>
+    <th align="center">支付宝</th>
+    <th align="center">微信</th>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="pubic/qr/alipay.png" width="220" alt="支付宝">
+    </td>
+    <td align="center">
+      <img src="pubic/qr/wechat.png" width="220" alt="微信">
+    </td>
+  </tr>
+</table>
+
+
+## 📮 联系
+
+- 作者：师兄知道
+- 微信公众号：师兄知道
+- Issue / 建议：欢迎在仓库提出

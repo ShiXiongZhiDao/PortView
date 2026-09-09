@@ -116,4 +116,31 @@ port-view/
 
 ## 📄 License
 
-No license file has been added yet. All rights reserved by the author until one is provided.
+This project is open-sourced under the [MIT License](LICENSE) — free to use, modify and redistribute (including commercially), provided the copyright notice is retained.
+
+## ☕ Support the Author
+
+If this little tool saved you some time, you can buy the author a coffee — your support keeps the project improving:
+
+<table>
+  <tr>
+    <th align="center">支付宝</th>
+    <th align="center">微信</th>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="pubic/qr/alipay.png" width="220" alt="支付宝">
+    </td>
+    <td align="center">
+      <img src="pubic/qr/wechat.png" width="220" alt="微信">
+    </td>
+  </tr>
+</table>
+
+
+
+## 📮 Contact
+
+- Author: 师兄知道 (ShiXiongZhiDao)
+- WeChat Official Account: 师兄知道
+- Issues & suggestions: welcome in this repository
