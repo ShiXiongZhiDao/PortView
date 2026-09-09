@@ -133,7 +133,7 @@ onMounted(() => {
           <FilterBar />
 
           <!-- 进程列表 -->
-          <div class="min-h-0 flex-1 pt-4">
+          <div class="min-h-0 flex-1 pt-3">
             <ProcessList />
           </div>
         </div>
