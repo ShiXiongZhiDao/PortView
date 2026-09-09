@@ -14,7 +14,7 @@
 - 所有列可拖拽调整宽度（持久化）；
 - 行**右键菜单**：打开程序地址 / 结束进程；
 - 支持 `taskkill /F` 结束进程（带确认与系统关键进程警示）；
-- **系统托盘**：关闭窗口即隐藏到托盘，托盘可显示/隐藏/退出，菜单文案随界面中英切换同步。
+- **系统托盘**：关闭窗口即隐藏到托盘；托盘右键菜单可「显示 / 退出」，左键单击托盘切换显隐，菜单文案随界面中英切换同步。
 
 **硬约束：仅支持 Windows（x64，Win10/11）。** 运行时必须以管理员权限启动。`src-tauri/` 里的 Rust 代码直接调用 WinAPI，无跨平台目标；`netinfo.rs` 中的 `#[cfg(test)]` 单元测试同样只在 Windows 上成立。
 
@@ -70,7 +70,7 @@ port-view/
 │  │  ├─ HeroHeader.vue       # 品牌区 + 4 个统计块 + 设置入口
 │  │  ├─ FilterBar.vue        # 协议/状态下拉 + 搜索框 + 刷新按钮
 │  │  ├─ ProcessList.vue      # 进程表格：排序/展开连接明细/结束进程
-│  │  └─ SettingsModal.vue    # 设置弹窗：通用 / 赞助 / 关于 三个 Tab
+│  │  └─ SettingsModal.vue    # 设置弹窗：通用 / 赞助 / 关于；赞助含二维码、「一毛也是爱」、关注我们、代码仓库；关于含标识/版本/检查更新/技术栈
 │  ├─ composables/
 │  │  ├─ useTheme.ts          # 主题单例（system/light/dark），同步 <html data-theme>
 │  │  └─ useUpdate.ts         # 升级检查单例（Gitee Releases API）
@@ -170,7 +170,7 @@ Rust 侧暴露 5 个 Tauri 命令（`lib.rs`）：
 | 加一列展示新字段 | ① Rust `ProcessInfo`/`ConnectionInfo` + ② `types.ts` + ③ `ProcessList.vue` 的 `columns`（含 `COL_DEFAULTS` 默认宽/最小宽）与模板 + ④ i18n 字典 |
 | 改默认排序字段/方向 | `ProcessList.vue` 的 `sortKey`/`sortDir`（当前默认 `"cpu"` 降序） |
 | 加/改右键菜单项 | `ProcessList.vue` 的 `openCtx` / `ctxOpenLocation` / `ctxKill` + i18n 字典 |
-| 改托盘菜单文案/行为 | `lib.rs`：`tray_labels` / `rebuild_tray` / `toggle_main_window`；关闭到托盘在 `TitleBar.vue` 的 `onCloseRequested` |
+| 改托盘菜单文案/行为 | `lib.rs`：`tray_labels` / `rebuild_tray` / `show_main_window`（菜单「显示」）/ `toggle_main_window`（左键显隐）；关闭到托盘在 `TitleBar.vue` 的 `onCloseRequested` |
 | 新增界面文案 | `src/i18n/index.ts`（zh + en 两处） |
 | 新增 Tauri 命令 | `lib.rs` 定义 `#[tauri::command]` + 注册进 `generate_handler!` + 前端 `invoke` |
 | 改窗口行为（尺寸/无边框/透明） | `src-tauri/tauri.conf.json`（窗口尺寸、`decorations`、`transparent`）；权限加在 `capabilities/default.json` |

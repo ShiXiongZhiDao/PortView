@@ -20,7 +20,7 @@ Built with **Tauri 2 + Vue 3 + TypeScript + Vite + UnoCSS + Pinia + naive-ui**.
 - **Per-process memory & CPU** — physical working set and CPU percentage (same convention as Task Manager) for each process. Click the **CPU / Memory** column header to sort; results are sorted by **CPU descending by default**.
 - **Resizable columns** — drag any column header edge to adjust its width; widths are remembered between launches.
 - **Right-click context menu** — on any process row: **Open file location** (reveals the program in Explorer) and **Kill process** (with confirmation).
-- **System tray** — minimize the window to the tray, show / hide it from the tray menu (or by left-clicking the icon), and quit from the tray. Closing the window sends it to the tray instead of quitting. The tray menu follows the app language automatically.
+- **System tray** — minimize the window to the tray, show it from the tray menu (or toggle by left-clicking the icon), and quit from the tray. Closing the window sends it to the tray instead of quitting. The tray menu follows the app language automatically.
 - **Fuzzy search** — match by process name, software name, full path, PID, port, and Chinese **pinyin / initials** (powered by `pinyin-pro`).
 - **Filters** — filter by protocol (All / TCP / UDP) and by connection state (LISTENING / ESTABLISHED / TIME_WAIT / CLOSE_WAIT / Other), stacked with the search query.
 - **Manual refresh** — data is a snapshot taken only when you press **Refresh** (or after killing a process); there is no background polling.
@@ -29,7 +29,7 @@ Built with **Tauri 2 + Vue 3 + TypeScript + Vite + UnoCSS + Pinia + naive-ui**.
 - **Light / Dark / System theme**, persisted.
 - **Frameless custom window** — macOS-style "traffic-light" controls (minimize / maximize / close) on the right, a draggable title region, and rounded window corners.
 - **Check for updates** — queries the Gitee Releases API, compares semantic versions, and links to the new release.
-- **Settings tabs** — General / Sponsor / About; version info, update check, repository links and the WeChat Official Account / Mini Program ("师兄知道") all live in **About**, and the dialog keeps a fixed size to avoid layout jumps.
+- **Settings tabs** — General / Sponsor / About. **Sponsor** holds the QR codes, the "every bit counts" donation line, the WeChat Official Account / Mini Program ("师兄知道") and the repository links; **About** holds version info, the update check and the tech-stack note. The dialog keeps a fixed size to avoid layout jumps.
 
 ## 🧱 Tech Stack
 
@@ -85,7 +85,7 @@ pnpm tauri build
 ### Window & tray
 
 - The native title bar is removed. Drag the window from the thin strip at the very top; use the three traffic-light buttons on the upper-right — yellow = minimize, green = maximize/restore, red = **close to tray**.
-- When the window is closed (or minimized via tray), the app keeps running in the **system tray**. Left-click the tray icon to show / hide the window; right-click it for **Show / Hide** and **Quit**. Use **Quit** to fully exit the app.
+- When the window is closed, the app keeps running in the **system tray**. Left-click the tray icon to show / hide the window; right-click it for **Show** and **Quit**. Use **Quit** to fully exit the app.
 
 ## 🔒 Why administrator? <a id="-why-administrator-english"></a>
 
