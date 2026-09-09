@@ -193,6 +193,34 @@ const REPO_URL = "https://gitee.com/ShiXiongZhiDao/port-view";
             <div class="text-xs" :style="{ color: 'var(--pv-text-soft)' }">{{ t("about.desc") }}</div>
           </div>
 
+          <!-- 代码仓库 -->
+          <span class="pt-1 text-xs font-extrabold tracking-wider" :style="{ color: 'var(--pv-text-soft)' }">
+            {{ t("settings.tab.repos") }}
+          </span>
+          <div class="grid grid-cols-2 gap-2.5">
+            <button
+              class="pv-btn flex items-center justify-center gap-2 px-3 py-2.5 text-sm font-bold"
+              :style="{ background: 'var(--pv-card-2)', color: 'var(--pv-text)' }"
+              @click="openExternal(REPO_URL)"
+            >
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.55 0-.27-.01-1.17-.02-2.12-3.2.7-3.88-1.36-3.88-1.36-.52-1.33-1.28-1.68-1.28-1.68-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11.1 11.1 0 0 1 5.8 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.42-2.69 5.39-5.26 5.68.41.36.78 1.06.78 2.14 0 1.55-.01 2.8-.01 3.18 0 .3.21.67.8.55A11.51 11.51 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5Z" />
+              </svg>
+              GitHub
+            </button>
+            <button
+              class="pv-btn flex items-center justify-center gap-2 px-3 py-2.5 text-sm font-bold"
+              :style="{ background: '#FEE2E2', color: '#DC2626' }"
+              @click="openExternal(REPO_URL)"
+            >
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M11.98 0C5.37 0 0 5.37 0 11.98c0 5.3 3.44 9.8 8.21 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.75.08-.73.08-.73 1.21.09 1.84 1.24 1.84 1.24 1.07 1.84 2.82 1.31 3.51 1 .11-.78.42-1.31.76-1.61-2.67-.3-5.47-1.34-5.47-5.95 0-1.31.47-2.39 1.24-3.23-.13-.3-.54-1.52.12-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 6.02 0c2.29-1.55 3.3-1.23 3.3-1.23.66 1.66.25 2.88.12 3.18.77.84 1.24 1.92 1.24 3.23 0 4.62-2.81 5.64-5.49 5.94.43.37.81 1.1.81 2.22v3.29c0 .32.22.7.83.58A12 12 0 0 0 24 11.98C24 5.37 18.63 0 11.98 0Z" />
+              </svg>
+              Gitee
+            </button>
+          </div>
+          <p class="break-all text-center text-[11px]" :style="{ color: 'var(--pv-text-faint)' }">{{ REPO_URL }}</p>
+
           <!-- 当前版本 -->
           <div
             class="flex items-center justify-between rounded-xl px-4 py-2.5"
@@ -285,34 +313,6 @@ const REPO_URL = "https://gitee.com/ShiXiongZhiDao/port-view";
               {{ t("update.retry") }}
             </button>
           </div>
-
-          <!-- 代码仓库 -->
-          <span class="pt-1 text-xs font-extrabold tracking-wider" :style="{ color: 'var(--pv-text-soft)' }">
-            {{ t("settings.tab.repos") }}
-          </span>
-          <div class="grid grid-cols-2 gap-2.5">
-            <button
-              class="pv-btn flex items-center justify-center gap-2 px-3 py-2.5 text-sm font-bold"
-              :style="{ background: 'var(--pv-card-2)', color: 'var(--pv-text)' }"
-              @click="openExternal(REPO_URL)"
-            >
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                <path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.55 0-.27-.01-1.17-.02-2.12-3.2.7-3.88-1.36-3.88-1.36-.52-1.33-1.28-1.68-1.28-1.68-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11.1 11.1 0 0 1 5.8 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.42-2.69 5.39-5.26 5.68.41.36.78 1.06.78 2.14 0 1.55-.01 2.8-.01 3.18 0 .3.21.67.8.55A11.51 11.51 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5Z" />
-              </svg>
-              GitHub
-            </button>
-            <button
-              class="pv-btn flex items-center justify-center gap-2 px-3 py-2.5 text-sm font-bold"
-              :style="{ background: '#FEE2E2', color: '#DC2626' }"
-              @click="openExternal(REPO_URL)"
-            >
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                <path d="M11.98 0C5.37 0 0 5.37 0 11.98c0 5.3 3.44 9.8 8.21 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.75.08-.73.08-.73 1.21.09 1.84 1.24 1.84 1.24 1.07 1.84 2.82 1.31 3.51 1 .11-.78.42-1.31.76-1.61-2.67-.3-5.47-1.34-5.47-5.95 0-1.31.47-2.39 1.24-3.23-.13-.3-.54-1.52.12-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 6.02 0c2.29-1.55 3.3-1.23 3.3-1.23.66 1.66.25 2.88.12 3.18.77.84 1.24 1.92 1.24 3.23 0 4.62-2.81 5.64-5.49 5.94.43.37.81 1.1.81 2.22v3.29c0 .32.22.7.83.58A12 12 0 0 0 24 11.98C24 5.37 18.63 0 11.98 0Z" />
-              </svg>
-              Gitee
-            </button>
-          </div>
-          <p class="break-all text-center text-[11px]" :style="{ color: 'var(--pv-text-faint)' }">{{ REPO_URL }}</p>
 
           <div class="text-center text-[11px]" :style="{ color: 'var(--pv-text-faint)' }">{{ t("about.stack") }}</div>
         </div>
