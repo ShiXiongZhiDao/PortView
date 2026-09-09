@@ -115,7 +115,9 @@ fn setup_tray(app: &tauri::AppHandle) -> tauri::Result<()> {
     let Some(icon) = app.default_window_icon() else {
         return Ok(());
     };
-    TrayIconBuilder::new()
+    // 注意：必须显式指定 id "main"，否则 tray-icon 默认用随机唯一 id，
+    // 会导致下方 rebuild_tray 里 app.tray_by_id("main") 取不到托盘、菜单挂不上。
+    TrayIconBuilder::with_id("main")
         .icon(icon.clone())
         .show_menu_on_left_click(false)
         .on_menu_event(|app, event| match event.id.as_ref() {

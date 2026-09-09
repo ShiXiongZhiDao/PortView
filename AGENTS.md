@@ -196,3 +196,4 @@ Rust 侧暴露 5 个 Tauri 命令（`lib.rs`）：
 12. **列宽持久化**：`ProcessList.vue` 列宽存 `localStorage["port-view-col-widths"]`，损坏/越界数据自动回退默认值。
 13. **README 已拆分为两份**：`README.md`（英文）与 `README.zh-CN.md`（中文），改 README 时两边都要更新。
 14. **`open_in_explorer` 必须用 `raw_arg`**：explorer 定位文件依赖 `/select,"路径"` 精确语法（含引号）。用普通 `.arg()` 传参会被 Rust 二次转义，表现为"只打开文件管理器、不选中文件"。改该函数时不要去掉 `std::os::windows::process::CommandExt::raw_arg`。
+15. **托盘必须显式指定 id**：`TrayIconBuilder::with_id("main")`，否则 tray-icon 默认分配随机唯一 id，`rebuild_tray` 里 `app.tray_by_id("main")` 取不到托盘，菜单静默挂不上（图标在、右键无菜单）。改托盘初始化时注意。
