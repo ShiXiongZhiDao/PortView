@@ -6,7 +6,7 @@
 
 ## 1. 项目概览
 
-`port-view`（对外展示名 **Port Process View**）是一款 **Windows 专属** 的轻量桌面工具：
+`port-view`（对外展示名 **PortView**）是一款 **Windows 专属** 的轻量桌面工具：
 
 - 列出系统全部 TCP / UDP 端点及其属主进程；
 - 为每个进程展示内存工作集与 CPU 占用（任务管理器口径）；
@@ -55,7 +55,7 @@ port-view/
 ├─ AGENTS.md                  # 本文件
 ├─ README.md                  # 用户说明（英文版）
 ├─ README.zh-CN.md            # 用户说明（中文版）
-├─ index.html                 # 入口 HTML（title = Port Process View）
+├─ index.html                 # 入口 HTML（title = PortView）
 ├─ package.json / pnpm-lock.yaml
 ├─ vite.config.ts             # 固定端口 1420；忽略 watch src-tauri
 ├─ uno.config.ts              # UnoCSS preset-wind3 + shortcuts
@@ -83,7 +83,7 @@ port-view/
 │  │  ├─ lib.rs               # 5 个 Tauri 命令 + 系统托盘 + CPU 基线预热 + Win11 圆角
 │  │  └─ netinfo.rs           # WinAPI 采集：连接/进程/内存/CPU + 单元测试
 │  ├─ build.rs                # 内嵌 requireAdministrator 清单（UAC 提权）
-│  ├─ tauri.conf.json         # 窗口 1280x800、无装饰、transparent、identifier
+│  ├─ tauri.conf.json         # productName=PortView（分发名/安装目录/exe/开始菜单/卸载显示名）；窗口 1280x800、无装饰、transparent、identifier；bundle.icon=自定义绿色 PV 图标；bundle.windows.nsis：startMenuFolder=师兄知道、installerIcon/uninstallerIcon=icons/icon.ico、headerImage=icons/nsis-header.bmp(150x57)、sidebarImage=icons/nsis-sidebar.bmp(164x314)
 │  ├─ capabilities/default.json  # 权限：core + opener + 窗口控制
 │  └─ Cargo.toml              # windows crate 0.62（按需 feature）
 ├─ public/
@@ -178,6 +178,8 @@ Rust 侧暴露 5 个 Tauri 命令（`lib.rs`）：
 | 改搜索/筛选逻辑 | `src/stores/connections.ts`（`buildSearchIndex` / `filteredProcesses`） |
 | 改采集算法 | `src-tauri/src/netinfo.rs`（注意保持连接统计不变量与 CPU 基线） |
 | 换版本号 | `package.json` + `Cargo.toml` + `tauri.conf.json` 三处同步（升级检查读的是 Tauri 运行时版本） |
+| 改应用图标 | 准备 1024×1024 真 PNG 源图，`pnpm tauri icon <源图.png>` 覆盖 `src-tauri/icons/`（exe/任务栏/托盘/安装包共用 `bundle.icon`）；NSIS 向导图另用 `icons/nsis-header.bmp`(150×57)、`icons/nsis-sidebar.bmp`(164×314) |
+| 改程序分发名 | 改 `tauri.conf.json` 的 `productName`（决定安装包文件名、安装目录、开始菜单、安装后 exe 名、卸载显示名）；**不要改 `Cargo.toml` 的 `name`**（内部 crate/调试 exe 名，改了会连锁 `port_view_lib`/`main.rs`/target 路径） |
 | 改升级检查 | `src/composables/useUpdate.ts`（Gitee Releases API，404 视为已是最新） |
 
 ## 9. 注意事项与陷阱
@@ -197,3 +199,5 @@ Rust 侧暴露 5 个 Tauri 命令（`lib.rs`）：
 13. **README 已拆分为两份**：`README.md`（英文）与 `README.zh-CN.md`（中文），改 README 时两边都要更新。
 14. **`open_in_explorer` 必须用 `raw_arg`**：explorer 定位文件依赖 `/select,"路径"` 精确语法（含引号）。用普通 `.arg()` 传参会被 Rust 二次转义，表现为"只打开文件管理器、不选中文件"。改该函数时不要去掉 `std::os::windows::process::CommandExt::raw_arg`。
 15. **托盘必须显式指定 id**：`TrayIconBuilder::with_id("main")`，否则 tray-icon 默认分配随机唯一 id，`rebuild_tray` 里 `app.tray_by_id("main")` 取不到托盘，菜单静默挂不上（图标在、右键无菜单）。改托盘初始化时注意。
+16. **图标源必须是真 PNG**：`pnpm tauri icon` 按 PNG 签名解码，CDN/浏览器另存得到的文件即使扩展名是 `.png` 也可能实际是 JPEG（文件头 `FF D8`），会报 `Invalid PNG signature`——先用 System.Drawing 等转成真正的 PNG 再生成。exe / 任务栏 / 托盘 / 安装包 / 卸载器共用 `bundle.icon` 里的 `icon.ico`，一处替换全局生效；托盘运行时取 `app.default_window_icon()`，不要单独硬编码图标路径。
+17. **分发名与内部名分离**：用户可见名称已统一为 **PortView**——`productName`、窗口标题（`tauri.conf.json` 的 `windows[].title`）、`index.html` 标题、`HeroHeader` 品牌标题、关于页标识全部一致；`Cargo.toml` 的 `name = "port-view"` 只决定开发期 `target/debug/port-view.exe` 与 crate 名，打包时 Tauri 会把二进制重命名为 `productName`（即安装后的 `PortView.exe`）。`identifier` 不可随意改，否则系统会视为另一个应用。

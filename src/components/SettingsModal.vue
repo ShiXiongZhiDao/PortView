@@ -256,7 +256,7 @@ const REPO_URL = "https://gitee.com/ShiXiongZhiDao/port-view";
             >
               PV
             </div>
-            <div class="font-heading text-lg font-bold" :style="{ color: 'var(--pv-text)' }">Port Process View</div>
+            <div class="font-heading text-lg font-bold" :style="{ color: 'var(--pv-text)' }">PortView</div>
             <div class="text-xs" :style="{ color: 'var(--pv-text-soft)' }">{{ t("about.desc") }}</div>
           </div>
 

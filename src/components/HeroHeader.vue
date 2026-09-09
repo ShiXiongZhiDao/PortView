@@ -34,7 +34,7 @@ const stats = computed(() => [
       </div>
       <div class="flex flex-col gap-1">
         <h1 class="font-heading text-2xl font-bold leading-none" :style="{ color: 'var(--pv-text)' }">
-          Port Process View
+          PortView
         </h1>
         <p class="text-xs" :style="{ color: 'var(--pv-text-soft)' }">
           {{ t("app.desc") }}
