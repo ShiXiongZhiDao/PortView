@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="512" height="512">
+  <!-- 3D 立体阴影底座（紧贴右下边缘） -->
+  <rect x="10" y="10" width="90" height="90" rx="22" fill="#181E29" />
+  
+  <!-- 前景绿色卡片（顶部与左侧 3px 细边框，无外围留白） -->
+  <rect x="1.5" y="1.5" width="88.5" height="88.5" rx="22" fill="#13AC53" stroke="#181E29" stroke-width="3" stroke-linejoin="round" />
+  
+  <!-- 字母 P（字号放大，笔画加粗） -->
+  <path d="M 25 59 V 33 H 33.5 C 41.5 33 41.5 46 33.5 46 H 25" fill="none" stroke="#FFFFFF" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" />
+  
+  <!-- 字母 V（字号放大，笔画加粗） -->
+  <path d="M 49 33 L 58.5 59 L 68 33" fill="none" stroke="#FFFFFF" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" />
+</svg>
