@@ -21,4 +21,8 @@ export interface ProcessInfo {
   tcp: number;
   udp: number;
   listening: number;
+  /** 物理内存工作集（字节） */
+  memory: number;
+  /** CPU 占用百分比（0–100） */
+  cpu: number;
 }
