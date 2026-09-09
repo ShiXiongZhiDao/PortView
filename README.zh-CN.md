@@ -41,6 +41,14 @@
 | 拼音搜索 | pinyin-pro |
 | 原生能力 | 通过 `windows` crate 调用 iphlpapi、ToolHelp、PSAPI、DWM |
 
+## 截图
+<img src="public/imgs/01.jpg" alt="主界面" width="600" />
+
+<img src="public/imgs/02.jpg" alt="设置" width="600" />
+
+
+
+
 ## ✅ 环境要求
 
 - Windows 10 / 11（x64）

@@ -44,6 +44,14 @@ Built with **Tauri 2 + Vue 3 + TypeScript + Vite + UnoCSS + Pinia + naive-ui**.
 | Pinyin search | pinyin-pro |
 | Native APIs | Windows `iphlpapi`, ToolHelp, PSAPI, DWM via the `windows` crate |
 
+
+## Preview
+<img src="public/imgs/01.jpg" alt="主界面" width="600" />
+
+<img src="public/imgs/02.jpg" alt="设置" width="600" />
+
+
+
 ## ✅ Requirements
 
 - Windows 10 / 11 (x64)
@@ -129,10 +137,10 @@ If this little tool saved you some time, you can buy the author a coffee — you
   </tr>
   <tr>
     <td align="center">
-      <img src="pubic/qr/alipay.png" width="220" alt="支付宝">
+      <img src="public/qr/alipay.png" width="220" alt="支付宝">
     </td>
     <td align="center">
-      <img src="pubic/qr/wechat.png" width="220" alt="微信">
+      <img src="public/qr/wechat.png" width="220" alt="微信">
     </td>
   </tr>
 </table>
