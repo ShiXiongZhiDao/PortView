@@ -13,7 +13,7 @@ A lightweight **Windows** desktop tool that lists every TCP/UDP endpoint, the pr
 Built with **Tauri 2 + Vue 3 + TypeScript + Vite + UnoCSS + Pinia + naive-ui**.
 
 > Repository: <https://gitee.com/ShiXiongZhiDao/port-view>
-
+   
 ## ✨ Features
 
 - **Process ↔ port unified view** — every running process is listed (including processes with no network connection, e.g. Everything), together with its TCP count, UDP count, listening ports and an aggregated port summary. Expand a row to inspect every raw connection (protocol / local address / remote address / state).
