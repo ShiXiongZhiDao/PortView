@@ -60,6 +60,13 @@ fn apply_window_round(window: &tauri::WebviewWindow) {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // CPU 占用率采用两次采样增量法（见 netinfo / ADR-005）。
+    // 在窗口与 WebView 创建之前，于后台先采一次建立基线，使前端首屏加载即可显示 CPU；
+    // 不引入任何定时轮询，界面数据仍只在用户手动刷新时更新。
+    std::thread::spawn(|| {
+        let _ = netinfo::get_processes();
+    });
+
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![get_connections, get_processes, kill_process])
