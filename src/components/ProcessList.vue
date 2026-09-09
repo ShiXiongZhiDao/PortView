@@ -17,9 +17,25 @@ function toggle(pid: number) {
   expandedPid.value = expandedPid.value === pid ? null : pid;
 }
 
-const rows = computed<(ProcessInfo & { _ports: number[] })[]>(
-  () => store.filteredProcesses as (ProcessInfo & { _ports: number[] })[],
-);
+/** 可排序字段与方向：默认按内存从大到小 */
+type SortKey = "memory" | "cpu";
+const sortKey = ref<SortKey>("memory");
+const sortDir = ref<"desc" | "asc">("desc");
+function toggleSort(key: SortKey) {
+  if (sortKey.value === key) {
+    sortDir.value = sortDir.value === "desc" ? "asc" : "desc";
+  } else {
+    sortKey.value = key;
+    sortDir.value = "desc";
+  }
+}
+
+const rows = computed<(ProcessInfo & { _ports: number[] })[]>(() => {
+  const list = [...(store.filteredProcesses as (ProcessInfo & { _ports: number[] })[])];
+  const key = sortKey.value;
+  const dir = sortDir.value === "desc" ? -1 : 1;
+  return list.sort((a, b) => dir * (a[key] - b[key]));
+});
 
 function iconStyle(row: ProcessInfo) {
   const dark = isDark.value;
@@ -52,15 +68,37 @@ function isCritical(pid: number, name: string): boolean {
   );
 }
 
-const columns = computed(() => [
-  { label: t("list.col.process"), width: "220px" },
-  { label: t("list.col.pid"), width: "70px" },
-  { label: t("list.col.tcp"), width: "56px" },
-  { label: t("list.col.udp"), width: "56px" },
-  { label: t("list.col.listening"), width: "56px" },
+/** 字节数格式化为可读内存（MB / GB） */
+function formatMem(bytes: number): string {
+  if (!bytes) return "0 MB";
+  const mb = bytes / 1024 / 1024;
+  if (mb >= 1024) return `${(mb / 1024).toFixed(2)} GB`;
+  return `${mb.toFixed(mb < 10 ? 1 : 0)} MB`;
+}
+
+/** CPU 占用百分比文本 */
+function formatCpu(cpu: number): string {
+  return `${(cpu ?? 0).toFixed(1)}%`;
+}
+
+/** CPU 占用越高颜色越暖，便于快速定位吃 CPU 的进程 */
+function cpuColor(cpu: number): string {
+  if (cpu >= 25) return "#DC2626";
+  if (cpu >= 8) return "#D97706";
+  return "var(--pv-text-soft)";
+}
+
+const columns = computed<{ label: string; width: string; sort?: SortKey }[]>(() => [
+  { label: t("list.col.process"), width: "180px" },
+  { label: t("list.col.pid"), width: "64px" },
+  { label: t("list.col.cpu"), width: "60px", sort: "cpu" },
+  { label: t("list.col.memory"), width: "84px", sort: "memory" },
+  { label: t("list.col.tcp"), width: "48px" },
+  { label: t("list.col.udp"), width: "48px" },
+  { label: t("list.col.listening"), width: "48px" },
   { label: t("list.col.ports"), width: "1fr" },
   { label: t("list.col.status"), width: "72px" },
-  { label: t("list.col.actions"), width: "150px" },
+  { label: t("list.col.actions"), width: "140px" },
 ]);
 </script>
 
@@ -72,7 +110,18 @@ const columns = computed(() => [
       :style="{ background: 'var(--pv-card-2)', borderBottom: '3px solid var(--pv-stroke)' }"
     >
       <div v-for="c in columns" :key="c.label" :style="{ width: c.width, flex: c.width === '1fr' ? 1 : 'none' }">
-        {{ c.label }}
+        <button
+          v-if="c.sort"
+          class="sort-head"
+          :style="{ color: sortKey === c.sort ? 'var(--pv-green-text)' : 'inherit' }"
+          @click="toggleSort(c.sort!)"
+        >
+          {{ c.label }}
+          <span class="sort-arrow">
+            {{ sortKey === c.sort ? (sortDir === "desc" ? "▼" : "▲") : "↕" }}
+          </span>
+        </button>
+        <template v-else>{{ c.label }}</template>
       </div>
     </div>
 
@@ -88,7 +137,7 @@ const columns = computed(() => [
           }"
         >
           <!-- 图标 + 名称 -->
-          <div class="flex min-w-0 items-center gap-2.5" style="width: 220px">
+          <div class="flex min-w-0 items-center gap-2.5" style="width: 180px">
             <div
               class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg font-heading text-sm font-bold"
               :style="{
@@ -109,16 +158,37 @@ const columns = computed(() => [
             </div>
           </div>
 
-          <div class="tabular-nums text-sm" style="width: 70px" :style="{ color: 'var(--pv-text-soft)' }">
+          <div class="tabular-nums text-sm" style="width: 64px" :style="{ color: 'var(--pv-text-soft)' }">
             {{ row.pid }}
           </div>
-          <div class="tabular-nums text-sm font-bold" style="width: 56px" :style="{ color: 'var(--pv-text)' }">
+
+          <!-- CPU 占用 -->
+          <div
+            class="tabular-nums text-sm font-bold"
+            style="width: 60px"
+            :style="{ color: cpuColor(row.cpu) }"
+            :title="`CPU ${formatCpu(row.cpu)}`"
+          >
+            {{ formatCpu(row.cpu) }}
+          </div>
+
+          <!-- 内存工作集 -->
+          <div
+            class="tabular-nums text-sm"
+            style="width: 84px"
+            :style="{ color: 'var(--pv-text-soft)' }"
+            :title="`${row.memory.toLocaleString()} 字节`"
+          >
+            {{ formatMem(row.memory) }}
+          </div>
+
+          <div class="tabular-nums text-sm font-bold" style="width: 48px" :style="{ color: 'var(--pv-text)' }">
             {{ row.tcp }}
           </div>
-          <div class="tabular-nums text-sm font-bold" style="width: 56px" :style="{ color: 'var(--pv-text)' }">
+          <div class="tabular-nums text-sm font-bold" style="width: 48px" :style="{ color: 'var(--pv-text)' }">
             {{ row.udp }}
           </div>
-          <div class="tabular-nums text-sm font-bold" style="width: 56px" :style="{ color: 'var(--pv-text)' }">
+          <div class="tabular-nums text-sm font-bold" style="width: 48px" :style="{ color: 'var(--pv-text)' }">
             {{ row.listening }}
           </div>
 
@@ -161,7 +231,7 @@ const columns = computed(() => [
           </div>
 
           <!-- 操作 -->
-          <div class="flex shrink-0 items-center gap-1.5" style="width: 150px">
+          <div class="flex shrink-0 items-center gap-1.5" style="width: 140px">
             <button
               v-if="row.tcp + row.udp > 0"
               class="pv-btn px-2.5 py-1 text-[11px]"
@@ -248,3 +318,28 @@ const columns = computed(() => [
     </div>
   </div>
 </template>
+
+<style scoped>
+/* 可排序表头（CPU / 内存） */
+.sort-head {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+}
+.sort-arrow {
+  font-size: 9px;
+  line-height: 1;
+  opacity: 0.45;
+  transition: opacity 0.12s ease-out;
+}
+.sort-head:hover .sort-arrow {
+  opacity: 1;
+}
+</style>

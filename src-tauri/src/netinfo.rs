@@ -5,8 +5,11 @@ use std::path::Path;
 use std::ptr::null_mut;
 
 use serde::Serialize;
+use std::collections::HashMap;
+use std::sync::Mutex;
+use std::time::Instant;
 use windows::core::{PCWSTR, PWSTR};
-use windows::Win32::Foundation::{CloseHandle, HANDLE};
+use windows::Win32::Foundation::{CloseHandle, FILETIME, HANDLE};
 use windows::Win32::NetworkManagement::IpHelper::{
     GetExtendedTcpTable, GetExtendedUdpTable, MIB_TCPTABLE_OWNER_PID, MIB_UDPTABLE_OWNER_PID,
     TCP_TABLE_OWNER_PID_ALL, UDP_TABLE_OWNER_PID,
@@ -18,8 +21,10 @@ use windows::Win32::System::Diagnostics::ToolHelp::{
     CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W,
     TH32CS_SNAPPROCESS,
 };
+use windows::Win32::System::ProcessStatus::{GetProcessMemoryInfo, PROCESS_MEMORY_COUNTERS};
 use windows::Win32::System::Threading::{
-    OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_WIN32, PROCESS_QUERY_LIMITED_INFORMATION,
+    GetProcessTimes, OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_WIN32,
+    PROCESS_QUERY_LIMITED_INFORMATION,
 };
 
 const AF_INET: u32 = 2;
@@ -219,7 +224,18 @@ pub struct ProcessInfo {
     pub udp: u32,
     /// 监听端口数（LISTENING）
     pub listening: u32,
+    /// 物理内存工作集（字节），即任务管理器"内存"列
+    pub memory: u64,
+    /// CPU 占用百分比（相对全部逻辑核，0–100，任务管理器口径）
+    pub cpu: f64,
 }
+
+/// 上一次 CPU 采样：采样时刻 + 各 PID 累计 CPU 时间（内核+用户，单位 100ns）
+struct CpuSnapshot {
+    at: Instant,
+    totals: HashMap<u32, u64>,
+}
+static CPU_LAST: Mutex<Option<CpuSnapshot>> = Mutex::new(None);
 
 /// 获取系统全部进程（含无网络连接的进程），附连接统计
 pub fn get_processes() -> Vec<ProcessInfo> {
@@ -256,7 +272,22 @@ pub fn get_processes() -> Vec<ProcessInfo> {
         }
     }
 
-    // 3. 组装：路径/软件名 + 连接计数
+    // 3. 采集每个进程的内存与累计 CPU 时间，并与上次采样对比算出 CPU 占用率
+    let logical_cores = std::thread::available_parallelism()
+        .map(|n| n.get() as f64)
+        .unwrap_or(1.0)
+        .max(1.0);
+    let now = Instant::now();
+    let previous = CPU_LAST.lock().ok().and_then(|mut g| g.take());
+
+    let mut resources: HashMap<u32, (u64, u64)> = HashMap::new();
+    let mut current_totals: HashMap<u32, u64> = HashMap::new();
+    for (pid, _) in &procs {
+        let (memory, total) = process_resource(*pid);
+        resources.insert(*pid, (memory, total));
+        current_totals.insert(*pid, total);
+    }
+
     let mut result: Vec<ProcessInfo> = procs
         .into_iter()
         .map(|(pid, name)| {
@@ -266,6 +297,20 @@ pub fn get_processes() -> Vec<ProcessInfo> {
                 .and_then(|p| get_software_name(p))
                 .unwrap_or_default();
             let (tcp, udp, listening) = agg.get(&pid).copied().unwrap_or((0, 0, 0));
+            let (memory, total_now) = resources.get(&pid).copied().unwrap_or((0, 0));
+
+            // CPU% = 进程 CPU 时间增量 /（真实时间增量 × 逻辑核数）×100
+            let mut cpu = 0.0_f64;
+            if let Some(prev) = &previous {
+                if let Some(total_prev) = prev.totals.get(&pid) {
+                    let wall = now.saturating_duration_since(prev.at).as_secs_f64();
+                    if wall > 0.001 {
+                        let proc_secs = total_now.saturating_sub(*total_prev) as f64 * 1e-7;
+                        cpu = (proc_secs / (wall * logical_cores) * 100.0).clamp(0.0, 100.0);
+                    }
+                }
+            }
+
             ProcessInfo {
                 pid,
                 name,
@@ -274,9 +319,19 @@ pub fn get_processes() -> Vec<ProcessInfo> {
                 tcp,
                 udp,
                 listening,
+                memory,
+                cpu: (cpu * 100.0).round() / 100.0,
             }
         })
         .collect();
+
+    // 保存本次采样，供下次手动刷新时计算增量
+    if let Ok(mut guard) = CPU_LAST.lock() {
+        *guard = Some(CpuSnapshot {
+            at: now,
+            totals: current_totals,
+        });
+    }
 
     // 补上 ToolHelp 快照可能遗漏的系统进程
     if !result.iter().any(|p| p.pid == 4) {
@@ -288,9 +343,62 @@ pub fn get_processes() -> Vec<ProcessInfo> {
             tcp: 0,
             udp: 0,
             listening: 0,
+            memory: 0,
+            cpu: 0.0,
         });
     }
     result
+}
+
+/// FILETIME（两个 32 位）→ 64 位计数值（单位 100ns）
+fn filetime_to_u64(ft: &FILETIME) -> u64 {
+    ((ft.dwHighDateTime as u64) << 32) | ft.dwLowDateTime as u64
+}
+
+/// 读取进程的内存工作集（字节）与累计 CPU 时间（内核+用户，100ns）；失败返回 (0,0)
+fn process_resource(pid: u32) -> (u64, u64) {
+    unsafe {
+        let handle: HANDLE = match OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid) {
+            Ok(h) => h,
+            Err(_) => return (0, 0),
+        };
+
+        // 物理内存工作集
+        let mut counters = PROCESS_MEMORY_COUNTERS::default();
+        let memory = if GetProcessMemoryInfo(
+            handle,
+            &mut counters,
+            std::mem::size_of::<PROCESS_MEMORY_COUNTERS>() as u32,
+        )
+        .is_ok()
+        {
+            counters.WorkingSetSize as u64
+        } else {
+            0
+        };
+
+        // 累计内核 + 用户 CPU 时间
+        let mut creation = FILETIME::default();
+        let mut exit = FILETIME::default();
+        let mut kernel = FILETIME::default();
+        let mut user = FILETIME::default();
+        let total = if GetProcessTimes(
+            handle,
+            &mut creation,
+            &mut exit,
+            &mut kernel,
+            &mut user,
+        )
+        .is_ok()
+        {
+            filetime_to_u64(&kernel) + filetime_to_u64(&user)
+        } else {
+            0
+        };
+
+        let _ = CloseHandle(handle);
+        (memory, total)
+    }
 }
 
 /// 宽字符数组 → String（截断到首个 NUL）
@@ -394,13 +502,34 @@ mod tests {
         let sum_udp: u32 = procs.iter().map(|p| p.udp).sum();
         assert_eq!(sum_tcp, conns.iter().filter(|c| c.protocol == "TCP").count() as u32);
         assert_eq!(sum_udp, conns.iter().filter(|c| c.protocol == "UDP").count() as u32);
-        println!("全部进程 {} 个；TCP 合计 {}，UDP 合计 {}", procs.len(), sum_tcp, sum_udp);
-        for p in procs.iter().take(6) {
+        // 内存工作集应能取到（当前测试进程自身一定有内存占用）
+        let self_mem = mine.unwrap().memory;
+        assert!(self_mem > 1_000_000, "自身进程内存应 >1MB，实际 {self_mem}");
+
+        // 第二次采样后间隔再采一次，验证 CPU 增量可计算
+        std::thread::sleep(std::time::Duration::from_millis(300));
+        let procs2 = get_processes();
+        println!("全部进程 {} 个；TCP 合计 {}，UDP 合计 {}", procs2.len(), sum_tcp, sum_udp);
+        // 按内存降序 Top 8，验证普通用户进程的内存/CPU 能被采集
+        let mut top: Vec<&ProcessInfo> = procs2.iter().filter(|p| p.memory > 0).collect();
+        top.sort_by(|a, b| b.memory.cmp(&a.memory));
+        for p in top.iter().take(8) {
             println!(
-                "pid={:<7} tcp={:<4} udp={:<4} listen={:<4} {:<24} sw={} path={}",
-                p.pid, p.tcp, p.udp, p.listening, p.name, p.software, p.path
+                "pid={:<7} cpu={:>5}% mem={:>9} tcp={:<4} udp={:<4} listen={:<4} {:<24}",
+                p.pid,
+                format!("{:.1}", p.cpu),
+                format!("{:.1}MB", p.memory as f64 / 1024.0 / 1024.0),
+                p.tcp,
+                p.udp,
+                p.listening,
+                p.name
             );
         }
+        let with_mem = procs2.iter().filter(|p| p.memory > 0).count();
+        println!("取到内存的进程数：{}/{}", with_mem, procs2.len());
+        assert!(with_mem > 20, "应有大量用户进程取到内存，实际 {with_mem}");
+        // CPU 百分比必须在合法区间
+        assert!(procs2.iter().all(|p| (0.0..=100.0).contains(&p.cpu)), "CPU 应在 0–100");
     }
 }
 
