@@ -128,10 +128,10 @@ port-view/
   </tr>
   <tr>
     <td align="center">
-      <img src="pubic/qr/alipay.png" width="220" alt="支付宝">
+      <img src="public/qr/alipay.png" width="220" alt="支付宝">
     </td>
     <td align="center">
-      <img src="pubic/qr/wechat.png" width="220" alt="微信">
+      <img src="public/qr/wechat.png" width="220" alt="微信">
     </td>
   </tr>
 </table>
