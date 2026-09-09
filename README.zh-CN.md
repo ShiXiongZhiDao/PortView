@@ -1,4 +1,4 @@
-# Port Process View
+# PortView
 
 [中文](#-中文) · [English](./README.md)
 
@@ -73,6 +73,8 @@ pnpm tauri dev
 ```bash
 pnpm tauri build
 ```
+
+NSIS 安装包输出到 `target/release/bundle/nsis/`，文件名为 **`PortView_<版本号>_x64-setup.exe`**。安装后，程序（可执行文件、安装目录、开始菜单快捷方式、任务栏 / 托盘图标与卸载器）统一命名为 **PortView**，并使用自定义的绿色 "PV" 应用图标；安装向导、卸载器与程序本体都不会出现 Tauri 默认图标。如需从新的 1024×1024 源图重新生成整套图标，执行 `pnpm tauri icon <源图.png>`（源图必须是真正的 PNG）。
 
 ## 🖱️ 使用说明
 
