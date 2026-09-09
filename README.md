@@ -12,7 +12,7 @@ A lightweight **Windows** desktop tool that lists every TCP/UDP endpoint, the pr
 
 Built with **Tauri 2 + Vue 3 + TypeScript + Vite + UnoCSS + Pinia + naive-ui**.
 
-> Repository: <https://gitee.com/ShiXiongZhiDao/port-view>
+> Repository: <https://gitee.com/ShiXiongZhiDao/PortView>
    
 ## ✨ Features
 

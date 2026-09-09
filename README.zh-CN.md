@@ -12,7 +12,7 @@
 
 基于 **Tauri 2 + Vue 3 + TypeScript + Vite + UnoCSS + Pinia + naive-ui** 构建。
 
-> 仓库地址：<https://gitee.com/ShiXiongZhiDao/port-view>
+> 仓库地址：<https://gitee.com/ShiXiongZhiDao/PortView>
 
 ## ✨ 功能特性
 

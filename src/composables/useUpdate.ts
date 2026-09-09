@@ -4,8 +4,8 @@ import { getVersion } from "@tauri-apps/api/app";
 // 兜底版本（浏览器环境 / 取 Tauri 版本失败时）
 const FALLBACK_VERSION = "0.1.0";
 const LATEST_API =
-  "https://gitee.com/api/v5/repos/ShiXiongZhiDao/port-view/releases/latest";
-const RELEASES_PAGE = "https://gitee.com/ShiXiongZhiDao/port-view/releases";
+  "https://gitee.com/api/v5/repos/ShiXiongZhiDao/PortView/releases/latest";
+const RELEASES_PAGE = "https://gitee.com/ShiXiongZhiDao/PortView/releases";
 
 export type UpdateStatus = "idle" | "checking" | "latest" | "available" | "error";
 
