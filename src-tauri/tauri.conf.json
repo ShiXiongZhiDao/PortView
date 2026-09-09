@@ -40,9 +40,7 @@
       "nsis": {
         "startMenuFolder": "师兄知道",
         "installerIcon": "icons/icon.ico",
-        "uninstallerIcon": "icons/icon.ico",
-        "headerImage": "icons/nsis-header.bmp",
-        "sidebarImage": "icons/nsis-sidebar.bmp"
+        "uninstallerIcon": "icons/icon.ico"
       }
     }
   }
