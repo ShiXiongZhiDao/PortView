@@ -63,7 +63,7 @@ fn open_in_explorer(path: String) -> Result<(), String> {
 
 /* ---------- 系统托盘 ---------- */
 
-/// 切换主窗口显示/隐藏（托盘左键与"显示/隐藏"菜单项共用）
+/// 切换主窗口显示/隐藏（托盘左键单击）
 fn toggle_main_window(app: &tauri::AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
         if window.is_visible().unwrap_or(false) {
@@ -75,22 +75,30 @@ fn toggle_main_window(app: &tauri::AppHandle) {
     }
 }
 
+/// 显示并聚焦主窗口（托盘菜单"显示"）
+fn show_main_window(app: &tauri::AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.show();
+        let _ = window.set_focus();
+    }
+}
+
 /// 按当前语言生成托盘菜单文案
 fn tray_labels() -> (&'static str, &'static str) {
     let lang = LANG.lock().map(|g| *g).unwrap_or("zh");
     if lang == "en" {
-        ("Show / Hide", "Quit")
+        ("Show", "Quit")
     } else {
-        ("显示 / 隐藏", "退出")
+        ("显示", "退出")
     }
 }
 
 /// 重建托盘菜单（语言切换后调用，实现中英同步）
 fn rebuild_tray(app: &tauri::AppHandle) -> tauri::Result<()> {
-    let (toggle_text, quit_text) = tray_labels();
-    let toggle = MenuItem::with_id(app, "toggle", toggle_text, true, None::<&str>)?;
+    let (show_text, quit_text) = tray_labels();
+    let show = MenuItem::with_id(app, "show", show_text, true, None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", quit_text, true, None::<&str>)?;
-    let menu = Menu::with_items(app, &[&toggle, &quit])?;
+    let menu = Menu::with_items(app, &[&show, &quit])?;
     if let Some(tray) = app.tray_by_id("main") {
         tray.set_menu(Some(menu))?;
     }
@@ -106,7 +114,7 @@ fn setup_tray(app: &tauri::AppHandle) -> tauri::Result<()> {
         .icon(icon.clone())
         .show_menu_on_left_click(false)
         .on_menu_event(|app, event| match event.id.as_ref() {
-            "toggle" => toggle_main_window(app),
+            "show" => show_main_window(app),
             "quit" => app.exit(0),
             _ => {}
         })

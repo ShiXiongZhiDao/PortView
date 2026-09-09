@@ -138,9 +138,23 @@ const REPO_URL = "https://gitee.com/ShiXiongZhiDao/port-view";
           </div>
         </div>
 
-        <!-- 赞助 -->
+        <!-- 赞助：二维码 + 一毛也是爱 + 关注我们 + 代码仓库 -->
         <div v-show="activeTab === 'sponsor'" class="flex flex-col gap-3">
           <p class="text-xs" :style="{ color: 'var(--pv-text-soft)' }">{{ t("settings.sponsorTip") }}</p>
+          <div class="flex justify-center pt-0.5">
+            <span
+              class="pv-pill text-base"
+              :style="{
+                background: 'var(--pv-green-bg)',
+                color: 'var(--pv-green-text)',
+                border: '2px solid var(--pv-green)',
+                boxShadow: '2px 2px 0 var(--pv-green)',
+                padding: '6px 18px',
+              }"
+            >
+              {{ t("sponsor.coin") }}
+            </span>
+          </div>
           <n-image-group>
             <div class="flex justify-center gap-4">
               <div
@@ -173,25 +187,6 @@ const REPO_URL = "https://gitee.com/ShiXiongZhiDao/port-view";
               </div>
             </div>
           </n-image-group>
-        </div>
-
-        <!-- 关于：标识 + 版本/升级 + 仓库 + 技术栈 -->
-        <div v-show="activeTab === 'about'" class="flex flex-col gap-3">
-          <div class="flex flex-col items-center gap-1.5 py-1 text-center">
-            <div
-              class="flex h-14 w-14 items-center justify-center font-heading text-xl font-bold text-white"
-              :style="{
-                background: 'var(--pv-green)',
-                border: '3px solid var(--pv-stroke)',
-                borderRadius: '14px',
-                boxShadow: '3px 3px 0 var(--pv-stroke)',
-              }"
-            >
-              PV
-            </div>
-            <div class="font-heading text-lg font-bold" :style="{ color: 'var(--pv-text)' }">Port Process View</div>
-            <div class="text-xs" :style="{ color: 'var(--pv-text-soft)' }">{{ t("about.desc") }}</div>
-          </div>
 
           <!-- 关注我们：微信公众号 / 小程序 -->
           <span class="text-xs font-extrabold tracking-wider" :style="{ color: 'var(--pv-text-soft)' }">
@@ -247,6 +242,25 @@ const REPO_URL = "https://gitee.com/ShiXiongZhiDao/port-view";
             </button>
           </div>
           <p class="break-all text-center text-[11px]" :style="{ color: 'var(--pv-text-faint)' }">{{ REPO_URL }}</p>
+        </div>
+
+        <!-- 关于：标识 + 版本/升级 + 技术栈 -->
+        <div v-show="activeTab === 'about'" class="flex flex-col gap-3">
+          <div class="flex flex-col items-center gap-1.5 py-1 text-center">
+            <div
+              class="flex h-14 w-14 items-center justify-center font-heading text-xl font-bold text-white"
+              :style="{
+                background: 'var(--pv-green)',
+                border: '3px solid var(--pv-stroke)',
+                borderRadius: '14px',
+                boxShadow: '3px 3px 0 var(--pv-stroke)',
+              }"
+            >
+              PV
+            </div>
+            <div class="font-heading text-lg font-bold" :style="{ color: 'var(--pv-text)' }">Port Process View</div>
+            <div class="text-xs" :style="{ color: 'var(--pv-text-soft)' }">{{ t("about.desc") }}</div>
+          </div>
 
           <!-- 当前版本 -->
           <div
