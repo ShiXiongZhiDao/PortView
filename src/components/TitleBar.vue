@@ -5,6 +5,15 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 let appWindow: ReturnType<typeof getCurrentWindow> | null = null;
 try {
   appWindow = getCurrentWindow();
+  // 关闭窗口 → 最小化到系统托盘（真正退出走托盘"退出"菜单）
+  appWindow.onCloseRequested(async (event) => {
+    event.preventDefault();
+    try {
+      await appWindow?.hide();
+    } catch {
+      /* 忽略 */
+    }
+  });
 } catch {
   appWindow = null;
 }

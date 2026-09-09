@@ -10,8 +10,11 @@
 
 - 列出系统全部 TCP / UDP 端点及其属主进程；
 - 为每个进程展示内存工作集与 CPU 占用（任务管理器口径）；
-- 支持按名称 / 拼音 / PID / 端口 / 路径模糊搜索、按协议与状态筛选、按 CPU / 内存排序；
-- 支持 `taskkill /F` 结束进程（带确认与系统关键进程警示）。
+- 支持按名称 / 拼音 / PID / 端口 / 路径模糊搜索、按协议与状态筛选、按 CPU / 内存排序（**默认 CPU 降序**）；
+- 所有列可拖拽调整宽度（持久化）；
+- 行**右键菜单**：打开程序地址 / 结束进程；
+- 支持 `taskkill /F` 结束进程（带确认与系统关键进程警示）；
+- **系统托盘**：关闭窗口即隐藏到托盘，托盘可显示/隐藏/退出，菜单文案随界面中英切换同步。
 
 **硬约束：仅支持 Windows（x64，Win10/11）。** 运行时必须以管理员权限启动。`src-tauri/` 里的 Rust 代码直接调用 WinAPI，无跨平台目标；`netinfo.rs` 中的 `#[cfg(test)]` 单元测试同样只在 Windows 上成立。
 
@@ -50,7 +53,8 @@
 ```
 port-view/
 ├─ AGENTS.md                  # 本文件
-├─ README.md                  # 面向用户的双语说明
+├─ README.md                  # 用户说明（英文版）
+├─ README.zh-CN.md            # 用户说明（中文版）
 ├─ index.html                 # 入口 HTML（title = Port Process View）
 ├─ package.json / pnpm-lock.yaml
 ├─ vite.config.ts             # 固定端口 1420；忽略 watch src-tauri
@@ -76,7 +80,7 @@ port-view/
 ├─ src-tauri/                 # Rust 后端
 │  ├─ src/
 │  │  ├─ main.rs              # 仅调用 port_view_lib::run()
-│  │  ├─ lib.rs               # 3 个 Tauri 命令 + 启动时 CPU 基线预热 + Win11 圆角
+│  │  ├─ lib.rs               # 5 个 Tauri 命令 + 系统托盘 + CPU 基线预热 + Win11 圆角
 │  │  └─ netinfo.rs           # WinAPI 采集：连接/进程/内存/CPU + 单元测试
 │  ├─ build.rs                # 内嵌 requireAdministrator 清单（UAC 提权）
 │  ├─ tauri.conf.json         # 窗口 1280x800、无装饰、transparent、identifier
@@ -93,13 +97,15 @@ port-view/
 
 ### 5.1 IPC 边界（前后端唯一通道）
 
-Rust 侧只暴露 3 个 Tauri 命令（`lib.rs`）：
+Rust 侧暴露 5 个 Tauri 命令（`lib.rs`）：
 
 | 命令 | 返回 | 说明 |
 |---|---|---|
 | `get_connections()` | `ConnectionInfo[]` | 全部 TCP+UDP 端点（含属主进程信息） |
 | `get_processes()` | `ProcessInfo[]` | 系统**全部**进程 + 每进程连接统计 + 内存/CPU |
 | `kill_process(pid)` | `String` | 执行 `taskkill /F /PID <pid>`，返回结果或错误 |
+| `set_language(lang)` | `()` | 记录界面语言并重建托盘菜单（中英同步） |
+| `open_in_explorer(path)` | `()` | 在资源管理器中定位并选中程序文件（右键菜单） |
 
 结构体均 `#[serde(rename_all = "camelCase")]`，前端 `src/types.ts` 有对应镜像接口——**改字段时必须两侧同步**。
 
@@ -132,7 +138,8 @@ Rust 侧只暴露 3 个 Tauri 命令（`lib.rs`）：
 
 - 所有用户可见文案在 `src/i18n/index.ts` 的 `zh` / `en` **两个字典**里各加一条 key，用 `t("key", {var})` 读取；带变量用 `{var}` 占位。
 - TCP 状态枚举（`LISTENING` 等）保持英文不译。
-- 相关 localStorage 键：语言 `port-view-lang`、主题 `port-view-theme`（默认值分别为 `zh` / `system`）。
+- 相关 localStorage 键：语言 `port-view-lang`、主题 `port-view-theme`、列宽 `port-view-col-widths`（默认值分别为 `zh` / `system` / 组件内默认列宽）。
+- 切换语言（`setLang`）会 `invoke("set_language")` 通知 Rust 重建**系统托盘菜单**文案（文案定义在 `lib.rs` 的 `tray_labels`，按 `LANG` 静态变量取 zh/en）。
 
 ### 6.2 视觉必须贴合设计系统
 
@@ -160,7 +167,10 @@ Rust 侧只暴露 3 个 Tauri 命令（`lib.rs`）：
 
 | 想做什么 | 改哪里 |
 |---|---|
-| 加一列展示新字段 | ① Rust `ProcessInfo`/`ConnectionInfo` + ② `types.ts` + ③ `ProcessList.vue` 的 `columns` 与模板 + ④ i18n 字典 |
+| 加一列展示新字段 | ① Rust `ProcessInfo`/`ConnectionInfo` + ② `types.ts` + ③ `ProcessList.vue` 的 `columns`（含 `COL_DEFAULTS` 默认宽/最小宽）与模板 + ④ i18n 字典 |
+| 改默认排序字段/方向 | `ProcessList.vue` 的 `sortKey`/`sortDir`（当前默认 `"cpu"` 降序） |
+| 加/改右键菜单项 | `ProcessList.vue` 的 `openCtx` / `ctxOpenLocation` / `ctxKill` + i18n 字典 |
+| 改托盘菜单文案/行为 | `lib.rs`：`tray_labels` / `rebuild_tray` / `toggle_main_window`；关闭到托盘在 `TitleBar.vue` 的 `onCloseRequested` |
 | 新增界面文案 | `src/i18n/index.ts`（zh + en 两处） |
 | 新增 Tauri 命令 | `lib.rs` 定义 `#[tauri::command]` + 注册进 `generate_handler!` + 前端 `invoke` |
 | 改窗口行为（尺寸/无边框/透明） | `src-tauri/tauri.conf.json`（窗口尺寸、`decorations`、`transparent`）；权限加在 `capabilities/default.json` |
@@ -181,3 +191,7 @@ Rust 侧只暴露 3 个 Tauri 命令（`lib.rs`）：
 7. **系统关键进程警示**：`ProcessList.vue::isCritical` 列出 System/svchost/csrss/wininit/services/lsass 等，结束进程的确认文案由此触发——新增高危进程类别时在这里补充。
 8. **统计口径**（`GLOSSARY.md`）：TCP 总数含 LISTENING；监听端口 = LISTENING 条目数；进程 = 全部进程数。改统计前先核对口径。
 9. 未添加 LICENSE，著作权归作者所有，涉及开源/分发需先与作者确认。
+10. **关闭窗口 = 隐藏到托盘**：`TitleBar.vue` 拦截 `onCloseRequested` 改为 `hide()`；真正退出用托盘"退出"（Rust `app.exit(0)`）。新增窗口关闭逻辑时别破坏该行为。
+11. **托盘语言同步**：托盘菜单文案在 Rust 侧（`LANG` 静态 + `tray_labels`），前端 `setLang` 会 `invoke("set_language")` 重建菜单；新增托盘文案要同时维护中英两套。
+12. **列宽持久化**：`ProcessList.vue` 列宽存 `localStorage["port-view-col-widths"]`，损坏/越界数据自动回退默认值。
+13. **README 已拆分为两份**：`README.md`（英文）与 `README.zh-CN.md`（中文），改 README 时两边都要更新。
