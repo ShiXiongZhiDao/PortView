@@ -156,15 +156,14 @@ const REPO_URL = "https://gitee.com/ShiXiongZhiDao/port-view";
             </span>
           </div>
           <n-image-group>
-            <div class="flex justify-center gap-4">
+            <div class="grid grid-cols-2 gap-2.5">
               <div
-                class="flex flex-col items-center gap-2 rounded-xl px-4 py-3"
+                class="flex flex-col items-center gap-1.5 rounded-xl px-2 py-3"
                 :style="{ border: '2px solid var(--pv-stroke)', background: 'var(--pv-card-2)' }"
               >
                 <n-image
                   src="/qr/alipay.png"
-                  width="132"
-                  height="132"
+                  width="100%"
                   object-fit="contain"
                   :show-toolbar="false"
                   :style="{ border: '1.5px solid var(--pv-border)', borderRadius: '8px' }"
@@ -172,13 +171,12 @@ const REPO_URL = "https://gitee.com/ShiXiongZhiDao/port-view";
                 <span class="text-xs font-bold" style="color: #1677ff">{{ t("sponsor.alipay") }}</span>
               </div>
               <div
-                class="flex flex-col items-center gap-2 rounded-xl px-4 py-3"
+                class="flex flex-col items-center gap-1.5 rounded-xl px-2 py-3"
                 :style="{ border: '2px solid var(--pv-stroke)', background: 'var(--pv-card-2)' }"
               >
                 <n-image
                   src="/qr/wechat.png"
-                  width="132"
-                  height="132"
+                  width="100%"
                   object-fit="contain"
                   :show-toolbar="false"
                   :style="{ border: '1.5px solid var(--pv-border)', borderRadius: '8px' }"
