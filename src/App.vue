@@ -3,13 +3,16 @@ import { computed, onMounted } from "vue";
 import { darkTheme } from "naive-ui";
 import { useConnectionsStore } from "./stores/connections";
 import { useTheme } from "./composables/useTheme";
+import { useI18n } from "./i18n";
+import { trackAppStarted } from "./lib/analytics";
 import HeroHeader from "./components/HeroHeader.vue";
 import FilterBar from "./components/FilterBar.vue";
 import ProcessList from "./components/ProcessList.vue";
 import TitleBar from "./components/TitleBar.vue";
 
 const store = useConnectionsStore();
-const { isDark } = useTheme();
+const { isDark, themeMode } = useTheme();
+const { lang, syncLanguageToBackend } = useI18n();
 const theme = computed(() => (isDark.value ? darkTheme : null));
 
 /** LearnHub 风格 naive-ui 主题覆盖（亮/暗） */
@@ -108,6 +111,10 @@ const themeOverrides = computed(() =>
 );
 
 onMounted(() => {
+  // 托盘菜单语言要跟界面一致（系统语言默认值也在这里同步给 Rust）。
+  syncLanguageToBackend();
+  // 启动配置快照只取一次；统计失败被 analytics 自己吞掉，不影响首屏刷新。
+  trackAppStarted(themeMode.value, lang.value);
   store.refresh();
 });
 </script>

@@ -236,6 +236,14 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
+        // 匿名使用统计（ADR-0003）。App Key 由构建环境注入；未配置时传空串，
+        // 插件会静默丢掉所有事件，开源仓库与本地 clone 都不需要藏 key。
+        .plugin(
+            tauri_plugin_aptabase::Builder::new(
+                option_env!("PORTVIEW_APTABASE_KEY").unwrap_or(""),
+            )
+            .build(),
+        )
         .invoke_handler(tauri::generate_handler![
             get_connections,
             get_processes,

@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- 圆角暖奶油底 -->
+  <rect x="16" y="16" width="480" height="480" rx="112" fill="rgb(254, 243, 199)" />
+
+  <!-- 腮红 -->
+  <circle cx="114" cy="304" r="24" fill="#FCA5A5" fill-opacity="0.45" />
+  <circle cx="398" cy="304" r="24" fill="#FCA5A5" fill-opacity="0.45" />
+
+  <!-- 左黑色豆豆眼 -->
+  <circle cx="166" cy="248" r="46" fill="#18181B" />
+  <circle cx="150" cy="230" r="15" fill="#FFFFFF" />
+  <circle cx="179" cy="263" r="6" fill="#FFFFFF" fill-opacity="0.75" />
+
+  <!-- 右黑色豆豆眼 -->
+  <circle cx="346" cy="248" r="46" fill="#18181B" />
+  <circle cx="330" cy="230" r="15" fill="#FFFFFF" />
+  <circle cx="359" cy="263" r="6" fill="#FFFFFF" fill-opacity="0.75" />
+</svg>

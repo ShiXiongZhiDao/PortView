@@ -130,7 +130,7 @@ This project is open-sourced under the [MIT License](LICENSE) — free to use, m
 
 ## ☕ Support the Author
 
-If this little tool saved you some time, you can buy the author a coffee — your support keeps the project improving:
+If this little tool saved you some time, you can buy the author a coffee — your support keeps the project improving. QR codes are loaded from a public image repository and are not bundled with the installer:
 
 <table>
   <tr>
@@ -139,10 +139,10 @@ If this little tool saved you some time, you can buy the author a coffee — you
   </tr>
   <tr>
     <td align="center">
-      <img src="public/qr/alipay.png" width="220" alt="支付宝">
+      <img src="https://raw.githubusercontent.com/ShiXiongZhiDao/BrandAssets/main/images/about/alipay.png" width="220" alt="Alipay">
     </td>
     <td align="center">
-      <img src="public/qr/wechat.png" width="220" alt="微信">
+      <img src="https://raw.githubusercontent.com/ShiXiongZhiDao/BrandAssets/main/images/about/wechat-pay.png" width="220" alt="WeChat Pay">
     </td>
   </tr>
 </table>

@@ -11,6 +11,7 @@ import { getVersion } from "@tauri-apps/api/app";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { check, type Update } from "@tauri-apps/plugin-updater";
 import { readonly, ref } from "vue";
+import { trackUpdateChecked } from "../lib/analytics";
 
 export type UpdateStatus =
   | "idle"
@@ -89,6 +90,9 @@ async function checkForUpdates(options: { silent?: boolean } = {}) {
     pending = null;
     status.value = options.silent ? "idle" : "error";
     if (!options.silent) releaseNotes.value = messageOf(error);
+  } finally {
+    // 无论成功、无更新还是失败都算"检查过一次"；不区分静默与手动（ADR-0003）。
+    trackUpdateChecked();
   }
 }
 

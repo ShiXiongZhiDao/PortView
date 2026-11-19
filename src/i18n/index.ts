@@ -1,10 +1,38 @@
 import { ref } from "vue";
 import { invoke } from "@tauri-apps/api/core";
+import { trackFeatureToggled } from "../lib/analytics";
 
 export type Lang = "zh" | "en";
+export type LangPreference = Lang | "system";
 
-/** 模块级单例语言状态，持久化到 localStorage */
-const lang = ref<Lang>((localStorage.getItem("port-view-lang") as Lang) || "zh");
+const LANG_STORE_KEY = "port-view-lang";
+
+/** 只支持中英：zh* 归中文，其余归英文。 */
+function detectSystemLang(): Lang {
+  const value = (navigator.language || "").toLowerCase();
+  return value.startsWith("zh") ? "zh" : "en";
+}
+
+/**
+ * 模块级单例：持久化的是用户偏好（含 system），lang 是实际渲染用的解析结果。
+ * 没有显式选过时默认跟随系统，而不是硬编码中文。
+ */
+const stored = localStorage.getItem(LANG_STORE_KEY);
+const langPref = ref<LangPreference>(
+  stored === "zh" || stored === "en" ? stored : "system",
+);
+const lang = ref<Lang>(langPref.value === "system" ? detectSystemLang() : langPref.value);
+
+if (typeof window !== "undefined") {
+  window.addEventListener("languagechange", () => {
+    if (langPref.value === "system") lang.value = detectSystemLang();
+  });
+}
+
+/** 启动时把托盘菜单语言对齐到实际渲染语言；不记埋点，不算用户切换。 */
+function syncLanguageToBackend() {
+  invoke("set_language", { lang: lang.value }).catch(() => {});
+}
 
 type Dict = Record<string, string>;
 
@@ -56,6 +84,7 @@ const zh: Dict = {
   "theme.dark": "暗色",
   "theme.dark.desc": "深蓝灰背景 + 深色卡片",
   "settings.language": "界面语言",
+  "lang.system": "跟随系统",
   "lang.zh": "简体中文",
   "lang.en": "English",
   "settings.about": "关于",
@@ -69,6 +98,10 @@ const zh: Dict = {
   "about.desc": "Windows 端口与进程实时监控工具",
   "about.stack": "技术栈：Tauri 2 · Vue 3 · TypeScript · naive-ui",
   "about.follow": "关注我们",
+  "about.website": "官网",
+  "about.source": "源码",
+  "about.feedback": "问题反馈",
+  "about.qrFail": "二维码加载失败，请检查网络",
   "about.mp": "微信公众号",
   "about.miniapp": "微信小程序",
   "update.current": "当前版本",
@@ -139,6 +172,7 @@ const en: Dict = {
   "theme.dark": "Dark",
   "theme.dark.desc": "Dark blue-gray background + dark cards",
   "settings.language": "Language",
+  "lang.system": "跟随系统",
   "lang.zh": "简体中文",
   "lang.en": "English",
   "settings.about": "About",
@@ -152,6 +186,10 @@ const en: Dict = {
   "about.desc": "Real-time Windows port & process monitor",
   "about.stack": "Built with Tauri 2 · Vue 3 · TypeScript · naive-ui",
   "about.follow": "Follow Us",
+  "about.website": "Website",
+  "about.source": "Source Code",
+  "about.feedback": "Feedback",
+  "about.qrFail": "QR unavailable, check your network",
   "about.mp": "Official Account",
   "about.miniapp": "Mini Program",
   "update.current": "Current version",
@@ -174,11 +212,14 @@ const en: Dict = {
 };
 
 export function useI18n() {
-  function setLang(l: Lang) {
-    lang.value = l;
-    localStorage.setItem("port-view-lang", l);
+  function setLang(l: LangPreference) {
+    const resolved = l === "system" ? detectSystemLang() : l;
+    langPref.value = l;
+    lang.value = resolved;
+    localStorage.setItem(LANG_STORE_KEY, l);
+    trackFeatureToggled("language", resolved === "en");
     // 同步系统托盘菜单语言（Rust 侧 set_language 重建菜单）
-    invoke("set_language", { lang: l }).catch(() => {});
+    invoke("set_language", { lang: resolved }).catch(() => {});
   }
   /** 翻译函数：渲染期调用会收集 lang 依赖，切换语言自动重渲染 */
   function t(key: string, vars?: Record<string, string | number>): string {
@@ -190,5 +231,5 @@ export function useI18n() {
     }
     return s;
   }
-  return { lang, setLang, t };
+  return { lang, langPref, setLang, syncLanguageToBackend, t };
 }

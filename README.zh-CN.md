@@ -129,7 +129,7 @@ port-view/
 
 ## ☕ 支持作者
 
-如果这个小工具帮到了你，可以扫码请师兄喝杯水 —— 你的支持是持续改进的动力：
+如果这个小工具帮到了你，可以扫码请师兄喝杯水 —— 你的支持是持续改进的动力。二维码从公开图片仓库加载，不随安装包分发：
 
 <table>
   <tr>
@@ -138,10 +138,10 @@ port-view/
   </tr>
   <tr>
     <td align="center">
-      <img src="public/qr/alipay.png" width="220" alt="支付宝">
+      <img src="https://raw.githubusercontent.com/ShiXiongZhiDao/BrandAssets/main/images/about/alipay.png" width="220" alt="支付宝">
     </td>
     <td align="center">
-      <img src="public/qr/wechat.png" width="220" alt="微信">
+      <img src="https://raw.githubusercontent.com/ShiXiongZhiDao/BrandAssets/main/images/about/wechat-pay.png" width="220" alt="微信">
     </td>
   </tr>
 </table>

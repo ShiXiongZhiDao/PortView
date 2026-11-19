@@ -317,11 +317,9 @@ function iconStyle(row: ProcessInfo) {
         <template v-for="row in rows" :key="row.pid">
           <!-- 单行 -->
           <div
-            class="flex items-center gap-3 px-5 py-2.5 transition-colors"
-            :style="{
-              borderBottom: '1px dashed var(--pv-border)',
-              background: expandedPid === row.pid ? 'var(--pv-card-2)' : 'transparent',
-            }"
+            class="pv-row flex items-center gap-3 px-5 py-2.5 transition-colors"
+            :class="{ 'pv-row-expanded': expandedPid === row.pid }"
+            :style="{ borderBottom: '1px dashed var(--pv-border)' }"
             @contextmenu.prevent="openCtx($event, row)"
           >
             <!-- 图标 + 名称 -->
@@ -627,5 +625,19 @@ function iconStyle(row: ProcessInfo) {
 }
 .pv-ctx-danger:hover {
   background: #fee2e2;
+}
+
+/* 行悬停高亮：展开态用次级面，悬停时统一切到更明显的行高亮色。 */
+.pv-row {
+  background: transparent;
+}
+.pv-row:hover {
+  background: var(--pv-row-hover);
+}
+.pv-row-expanded {
+  background: var(--pv-card-2);
+}
+.pv-row-expanded:hover {
+  background: var(--pv-row-hover);
 }
 </style>

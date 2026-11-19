@@ -6,6 +6,7 @@
   "permissions": [
     "core:default",
     "opener:default",
+    "aptabase:allow-track-event",
     "updater:default",
     "process:default",
     "core:window:allow-minimize",
