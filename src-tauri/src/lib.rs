@@ -91,6 +91,25 @@ fn open_in_explorer(path: String) -> Result<(), String> {
         .map_err(|e| format!("无法打开资源管理器：{}", e))
 }
 
+/// 当前运行的是否是安装版（见 ADR-0002）。
+///
+/// NSIS 用 currentUser 安装到 `%LOCALAPPDATA%\PortView`。便携版解压到别处时返回 false，
+/// 前端据此禁用「下载并安装」——Tauri updater 在 Windows 上只能执行安装包，
+/// 便携 exe 没有被安装器替换的目标目录。
+/// 用户若手动把便携版解压到安装目录会被误判为安装版，这是可接受的边界情况。
+#[tauri::command]
+fn is_installed_build() -> bool {
+    let exe = match std::env::current_exe() {
+        Ok(path) => path.to_string_lossy().to_lowercase(),
+        Err(_) => return false,
+    };
+    let local = match std::env::var_os("LOCALAPPDATA") {
+        Some(value) => value.to_string_lossy().to_lowercase(),
+        None => return false,
+    };
+    exe.starts_with(&format!("{}\\portview\\", local.trim_end_matches('\\')))
+}
+
 /* ---------- 系统托盘 ---------- */
 
 /// 切换主窗口显示/隐藏（托盘左键单击）
@@ -215,12 +234,15 @@ pub fn run() {
 
     builder
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .invoke_handler(tauri::generate_handler![
             get_connections,
             get_processes,
             kill_process,
             set_language,
-            open_in_explorer
+            open_in_explorer,
+            is_installed_build
         ])
         .setup(|app| {
             #[cfg(target_os = "windows")]

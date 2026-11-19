@@ -16,8 +16,12 @@ const {
   latestVersion,
   releaseNotes,
   releaseUrl,
+  progress,
+  installed,
   checkForUpdates,
   loadCurrentVersion,
+  scheduleAutoCheck,
+  installUpdate,
 } = useUpdate();
 
 const activeTab = ref<"general" | "sponsor" | "about">("general");
@@ -26,7 +30,10 @@ const activeTab = ref<"general" | "sponsor" | "about">("general");
 watch(
   () => props.show,
   (v) => {
-    if (v) loadCurrentVersion();
+    if (v) {
+      void loadCurrentVersion();
+      scheduleAutoCheck();
+    }
   }
 );
 
@@ -35,6 +42,19 @@ const tabs = computed(() => [
   { id: "sponsor", label: t("settings.tab.sponsor") },
   { id: "about", label: t("settings.tab.about") },
 ]);
+
+const updateBusy = computed(
+  () =>
+    status.value === "checking" ||
+    status.value === "downloading" ||
+    status.value === "installing",
+);
+const checkLabel = computed(() => {
+  if (status.value === "checking") return t("update.checking");
+  if (status.value === "downloading") return t("update.downloading", { percent: progress.value });
+  if (status.value === "installing") return t("update.installing");
+  return t("update.check");
+});
 
 const themeValue = computed<ThemeMode>({
   get: () => themeMode.value,
@@ -273,8 +293,8 @@ const REPO_URL = "https://gitee.com/ShiXiongZhiDao/PortView";
           <button
             class="pv-btn flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold text-white"
             :style="{ background: 'var(--pv-green)' }"
-            :disabled="status === 'checking'"
-            @click="checkForUpdates"
+            :disabled="updateBusy"
+            @click="checkForUpdates()"
           >
             <svg
               v-if="status === 'checking'"
@@ -288,8 +308,22 @@ const REPO_URL = "https://gitee.com/ShiXiongZhiDao/PortView";
               <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-opacity="0.3" stroke-width="3" />
               <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" stroke-width="3" stroke-linecap="round" />
             </svg>
-            {{ status === "checking" ? t("update.checking") : t("update.check") }}
+            {{ checkLabel }}
           </button>
+
+          <!-- 下载中 / 安装中 -->
+          <div
+            v-if="status === 'downloading' || status === 'installing'"
+            class="flex flex-col gap-2 rounded-xl px-4 py-3"
+            :style="{ border: '2px solid var(--pv-stroke)', background: 'var(--pv-card-2)' }"
+          >
+            <span class="text-xs font-bold" :style="{ color: 'var(--pv-text-soft)' }">
+              {{ status === 'downloading' ? t("update.downloading", { percent: progress }) : t("update.installing") }}
+            </span>
+            <span v-if="status === 'installing'" class="text-[11px]" :style="{ color: 'var(--pv-text-faint)' }">
+              {{ t("update.installerHint") }}
+            </span>
+          </div>
 
           <!-- 已是最新 -->
           <div
@@ -328,13 +362,28 @@ const REPO_URL = "https://gitee.com/ShiXiongZhiDao/PortView";
                 {{ releaseNotes }}
               </div>
             </template>
-            <button
-              class="pv-btn mt-0.5 flex items-center justify-center gap-2 px-4 py-2 text-sm font-bold text-white"
-              :style="{ background: 'var(--pv-green)' }"
-              @click="openExternal(releaseUrl)"
-            >
-              {{ t("update.download") }}
-            </button>
+            <template v-if="installed">
+              <button
+                class="pv-btn mt-0.5 flex items-center justify-center gap-2 px-4 py-2 text-sm font-bold text-white"
+                :style="{ background: 'var(--pv-green)' }"
+                @click="installUpdate"
+              >
+                {{ t("update.install") }}
+              </button>
+              <span class="text-center text-[11px]" :style="{ color: 'var(--pv-text-faint)' }">
+                {{ t("update.installHint") }}
+              </span>
+            </template>
+            <template v-else>
+              <span class="text-[11px]" :style="{ color: 'var(--pv-text-soft)' }">{{ t("update.portableHint") }}</span>
+              <button
+                class="pv-btn mt-0.5 flex items-center justify-center gap-2 px-4 py-2 text-sm font-bold text-white"
+                :style="{ background: 'var(--pv-green)' }"
+                @click="openExternal(releaseUrl)"
+              >
+                {{ t("update.download") }}
+              </button>
+            </template>
           </div>
 
           <!-- 检查失败 -->
@@ -343,11 +392,13 @@ const REPO_URL = "https://gitee.com/ShiXiongZhiDao/PortView";
             class="flex items-center justify-center gap-3 rounded-xl px-4 py-3"
             :style="{ background: '#FEF2F2' }"
           >
-            <span class="text-xs font-bold" style="color: #DC2626">{{ t("update.error") }}</span>
+            <span class="text-xs font-bold" style="color: #DC2626">
+              {{ releaseNotes || t("update.error") }}
+            </span>
             <button
               class="pv-btn px-4 py-1.5 text-xs font-bold"
               :style="{ background: '#fff', color: '#DC2626', border: '2px solid #DC2626' }"
-              @click="checkForUpdates"
+              @click="checkForUpdates()"
             >
               {{ t("update.retry") }}
             </button>
