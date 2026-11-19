@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from "vue";
+import appIcon from "../../src-tauri/icons/app-icon.svg?url";
 import { useTheme, type ThemeMode } from "../composables/useTheme";
 import { useI18n, type LangPreference } from "../i18n";
 import { useUpdate } from "../composables/useUpdate";
@@ -277,15 +278,15 @@ const ISSUES_URL = "https://github.com/ShiXiongZhiDao/PortView/issues";
         <div v-show="activeTab === 'about'" class="flex flex-col gap-3">
           <div class="flex flex-col items-center gap-1.5 py-1 text-center">
             <div
-              class="flex h-14 w-14 items-center justify-center font-heading text-xl font-bold text-white"
+              class="flex h-14 w-14 items-center justify-center overflow-hidden"
               :style="{
-                background: 'var(--pv-green)',
+                background: 'rgb(254, 243, 199)',
                 border: '3px solid var(--pv-stroke)',
                 borderRadius: '14px',
                 boxShadow: '3px 3px 0 var(--pv-stroke)',
               }"
             >
-              PV
+              <img :src="appIcon" alt="PortView" class="h-full w-full object-cover" />
             </div>
             <div class="font-heading text-lg font-bold" :style="{ color: 'var(--pv-text)' }">PortView</div>
             <div class="text-xs" :style="{ color: 'var(--pv-text-soft)' }">{{ t("about.desc") }}</div>

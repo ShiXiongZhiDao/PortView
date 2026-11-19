@@ -80,7 +80,7 @@ pnpm tauri dev
 pnpm tauri build
 ```
 
-The NSIS installer is emitted under `target/release/bundle/nsis/` as **`PortView_<version>_x64-setup.exe`**. After installation the program — executable, install folder, Start Menu shortcut, taskbar/tray icon and uninstaller — is named **PortView** and uses the custom green "PV" app icon. The installer wizard, the uninstaller and the app itself never fall back to the default Tauri icon. To regenerate the whole icon set from a new 1024×1024 source, run `pnpm tauri icon <source.png>` (the source must be a real PNG).
+The NSIS installer is emitted under `target/release/bundle/nsis/` as **`PortView_<version>_x64-setup.exe`**. After installation the program — executable, install folder, Start Menu shortcut, taskbar/tray icon and uninstaller — is named **PortView** and uses the custom cream mascot app icon. The installer wizard, the uninstaller and the app itself never fall back to the default Tauri icon. To regenerate the whole icon set from a new 1024×1024 source, run `pnpm tauri icon <source.png>` (the source must be a real PNG).
 
 Release notes and installers are published on the [Gitee Releases page](https://gitee.com/ShiXiongZhiDao/PortView/releases).
 

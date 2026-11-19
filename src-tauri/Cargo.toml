@@ -1,6 +1,6 @@
 [package]
 name = "port-view"
-version = "0.3.0"
+version = "0.3.1"
 description = "PortView - Windows port & process monitor"
 authors = ["师兄知道"]
 edition = "2021"

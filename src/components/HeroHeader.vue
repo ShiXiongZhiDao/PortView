@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
+import appIcon from "../../src-tauri/icons/app-icon.svg?url";
 import { useConnectionsStore } from "../stores/connections";
 import { useI18n } from "../i18n";
 import SettingsModal from "./SettingsModal.vue";
@@ -22,15 +23,15 @@ const stats = computed(() => [
     <!-- 左侧：品牌 -->
     <div class="flex items-center gap-3">
       <div
-        class="flex h-12 w-12 shrink-0 items-center justify-center font-heading text-lg font-bold text-white"
+        class="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden"
         :style="{
-          background: 'var(--pv-green)',
+          background: 'rgb(254, 243, 199)',
           border: '3px solid var(--pv-stroke)',
-          borderRadius: '12px',
+          borderRadius: '13px',
           boxShadow: '3px 3px 0 var(--pv-stroke)',
         }"
       >
-        PV
+        <img :src="appIcon" alt="PortView" class="h-full w-full object-cover" />
       </div>
       <div class="flex flex-col">
         <h1 class="font-heading text-2xl font-bold leading-none" :style="{ color: 'var(--pv-text)' }">

@@ -93,21 +93,29 @@ fn open_in_explorer(path: String) -> Result<(), String> {
 
 /// 当前运行的是否是安装版（见 ADR-0002）。
 ///
-/// NSIS 用 currentUser 安装到 `%LOCALAPPDATA%\PortView`。便携版解压到别处时返回 false，
-/// 前端据此禁用「下载并安装」——Tauri updater 在 Windows 上只能执行安装包，
-/// 便携 exe 没有被安装器替换的目标目录。
-/// 用户若手动把便携版解压到安装目录会被误判为安装版，这是可接受的边界情况。
+/// 判据是 exe 同目录是否存在 `uninstall.exe`：NSIS 安装时一定会写这个文件，
+/// 便携版 zip 只有 exe + README，没有它。前端据此禁用「下载并安装」——
+/// Tauri updater 在 Windows 上只能执行安装包，便携 exe 没有被安装器替换的目标目录。
+///
+/// 不用「exe 是否位于当前用户 LOCALAPPDATA\PortView」来判：应用带 requireAdministrator
+/// manifest，标准用户启动时会 UAC 提权切换到管理员账户，进程的 LOCALAPPDATA 随之改变，
+/// 而 exe 仍在原用户目录，前缀对不上会把安装版误判成便携版（0.2.0 实测踩到）。
+/// 用户若手动把便携版 exe 连同 uninstall.exe 放到同一目录会被误判为安装版，
+/// 这是可接受的边界情况。
+/// 判据本体，接受 exe 路径，便于回归测试。
+fn is_installed_build_at(exe: &std::path::Path) -> bool {
+    match exe.parent() {
+        Some(dir) => dir.join("uninstall.exe").exists(),
+        None => false,
+    }
+}
+
 #[tauri::command]
 fn is_installed_build() -> bool {
-    let exe = match std::env::current_exe() {
-        Ok(path) => path.to_string_lossy().to_lowercase(),
-        Err(_) => return false,
-    };
-    let local = match std::env::var_os("LOCALAPPDATA") {
-        Some(value) => value.to_string_lossy().to_lowercase(),
-        None => return false,
-    };
-    exe.starts_with(&format!("{}\\portview\\", local.trim_end_matches('\\')))
+    match std::env::current_exe() {
+        Ok(exe) => is_installed_build_at(&exe),
+        Err(_) => false,
+    }
 }
 
 /* ---------- 系统托盘 ---------- */
@@ -266,7 +274,7 @@ pub fn run() {
 
 #[cfg(test)]
 mod tests {
-    use super::decode_ansi_lossy;
+    use super::{decode_ansi_lossy, is_installed_build_at};
 
     #[test]
     fn decodes_ansi_bytes() {
@@ -287,5 +295,28 @@ mod tests {
     fn passes_through_ascii_and_empty() {
         assert_eq!(decode_ansi_lossy(b"ERROR: not found."), "ERROR: not found.");
         assert_eq!(decode_ansi_lossy(b""), "");
+    }
+
+    #[test]
+    fn installed_build_keyed_off_sibling_uninstaller() {
+        use std::fs;
+        use std::path::PathBuf;
+
+        let root = std::env::temp_dir().join(format!("pv-install-kind-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        let app_dir = root.join("PortView");
+        fs::create_dir_all(&app_dir).unwrap();
+        let exe = app_dir.join("portview.exe");
+        fs::write(&exe, b"exe").unwrap();
+
+        // 便携版：只有 exe，无同目录 uninstall.exe → false
+        assert!(!is_installed_build_at(&exe));
+        // 安装版：NSIS 会写 uninstall.exe → true
+        fs::write(app_dir.join("uninstall.exe"), b"uninst").unwrap();
+        assert!(is_installed_build_at(&exe));
+        // 无父目录的路径 → false
+        assert!(!is_installed_build_at(&PathBuf::from("portview.exe")));
+
+        let _ = fs::remove_dir_all(&root);
     }
 }
