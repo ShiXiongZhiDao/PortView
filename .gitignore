@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# WorkBuddy workspace data (local only)
+.workbuddy/

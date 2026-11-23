@@ -18,7 +18,7 @@ fn main() {
         }
     }
 
-    // 以管理员权限运行（UAC 提权），保证能读取所有进程完整路径并结束系统进程
+    // 默认以普通权限启动（受限模式）；需要完整数据时由界面主动 UAC 提权（ADR-0010）
     let mut windows = tauri_build::WindowsAttributes::new();
     windows = windows.app_manifest(
         r#"
@@ -38,7 +38,7 @@ fn main() {
   <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
     <security>
       <requestedPrivileges>
-        <requestedExecutionLevel level="requireAdministrator" uiAccess="false" />
+        <requestedExecutionLevel level="asInvoker" uiAccess="false" />
       </requestedPrivileges>
     </security>
   </trustInfo>

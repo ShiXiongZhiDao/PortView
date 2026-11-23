@@ -1,135 +1,133 @@
-# PortView
+<h1 align="center">PortView</h1>
 
-[中文](#-中文) · [English](./README.md)
+<p align="center"><em>一个窗口看清：哪个进程占用了端口，它又用了多少资源。</em></p>
 
-> 英文版见 **[README.md](./README.md)**。
+<p align="center">
+  [English](./README.md) · 中文
+</p>
 
----
+<p align="center">
+  [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+  [![Platform: Windows](https://img.shields.io/badge/platform-Windows%2010%2F11-blue.svg)](https://gitee.com/ShiXiongZhiDao/PortView/releases)
+  [![Bilingual](https://img.shields.io/badge/UI-%E4%B8%AD%E8%8B%B1%20%2F%20EN-purple.svg)](./README.md)
+  [![Privacy](https://img.shields.io/badge/privacy-no%20personal%20data-orange.svg)](#隐私)
+  [![Release](https://img.shields.io/badge/release-latest-brightgreen.svg)](https://gitee.com/ShiXiongZhiDao/PortView/releases)
+</p>
 
-# 🇨🇳 中文
+<p align="center">
+  <img src="public/imgs/process-light.jpg" alt="PortView 进程视图" width="880">
+</p>
 
-一款轻量的 **Windows** 桌面工具：列出所有 TCP/UDP 端点及其属主进程，并为每个进程展示内存占用与 CPU 占用；支持结束进程、按名称 / 拼音 / PID / 端口模糊搜索、按资源占用排序，整体采用贴纸风格界面。
+## 下载
 
-基于 **Tauri 2 + Vue 3 + TypeScript + Vite + UnoCSS + Pinia + naive-ui** 构建。
+自测支持 Windows 10 / 11 x64，其他平台可自行构建。点渠道链接进入发布页下载：
 
-> 仓库地址：<https://gitee.com/ShiXiongZhiDao/PortView>
+| 形态 | 文件 | 说明 | 渠道 |
+|---|---|---|---|
+| 安装版 | `PortView_<版本号>_x64-setup.exe` | 按当前用户安装，安装无需管理员权限；支持应用内更新 | [Gitee](https://gitee.com/ShiXiongZhiDao/PortView/releases) · [GitHub](https://github.com/ShiXiongZhiDao/PortView/releases) |
+| 便携版 | `PortView_<版本号>_x64-portable.zip` | 解压即用；新版本需手动下载 | [Gitee](https://gitee.com/ShiXiongZhiDao/PortView/releases) · [GitHub](https://github.com/ShiXiongZhiDao/PortView/releases) |
 
-## ✨ 功能特性
+想自己编译，见[从源码构建](#从源码构建)。默认以**受限模式**启动，不弹 UAC；需要完整数据时，在标题栏或设置页主动提升为管理员。见[为什么需要管理员](#为什么需要管理员)。
 
-- **进程 ↔ 端口合并视图**：列出系统全部进程（含无网络连接的进程，如 Everything），并给出 TCP 数、UDP 数、监听端口数与聚合端口摘要；展开某行可查看每条原始连接（协议 / 本地地址 / 远程地址 / 状态）。
-- **进程内存与 CPU**：展示每个进程的物理内存工作集与 CPU 占用率（与任务管理器同口径）。点击 **CPU / 内存** 表头可排序，**默认按 CPU 从大到小**。
-- **列宽可拖拽调整**：拖动任意列表头的右边缘即可调整该列宽度，列宽会在下次启动时记住。
-- **行右键菜单**：在任意进程行上点击鼠标右键，可**打开程序地址**（在资源管理器中定位该程序）或**结束进程**（带确认）。
-- **模糊搜索**：支持进程名、软件名、完整路径、PID、端口以及中文**拼音 / 首字母**匹配（pinyin-pro）。
-- **筛选**：按协议（全部 / TCP / UDP）与连接状态（LISTENING / ESTABLISHED / TIME_WAIT / CLOSE_WAIT / 其他）筛选，与搜索叠加生效。
-- **手动刷新**：数据为一次性快照，仅在点击"刷新"（或结束进程后）更新，无后台轮询。
-- **结束进程**：`taskkill /F`，带气泡二次确认；系统关键进程额外红色警示。
-- **亮色 / 暗色 / 跟随系统**主题，并持久化。
+## 它是什么
 
-## 🧱 技术栈
+PortView 是个本地 Windows 小工具，帮你看清两件事：**哪个进程占用了端口，它用了多少 CPU 和内存。** 数据只留在本机，不上传。
 
-| 层次 | 选型 |
-|---|---|
-| 桌面框架 | Tauri 2（Rust） |
-| 前端框架 | Vue 3（`<script setup>`） |
-| 语言 | TypeScript（strict） |
-| 构建 | Vite |
-| 样式 | UnoCSS（`preset-wind3`） |
-| 状态管理 | Pinia |
-| 组件库 | naive-ui |
-| 国际化 | 自研轻量 i18n 单例（中 / 英） |
-| 拼音搜索 | pinyin-pro |
-| 原生能力 | 通过 `windows` crate 调用 iphlpapi、ToolHelp、PSAPI、DWM |
+## 核心特点
 
-## 截图
-<img src="public/imgs/01.jpg" alt="主界面" width="600" />
+- **进程 / 端口双视图**：按进程或按端口看，顶部一键切换。
+- **搜索筛选快**：名称、PID、端口、拼音都能搜，还能按协议和状态筛。
+- **资源一目了然**：CPU、内存、连接、路径直接看到；读不到就显示 `—`，不填假数据。
+- **自动 + 手动刷新**：默认每 3 秒更新一次，也可以随时手动刷新。
+- **结束进程更安全**：动手前核对进程身份，避免误杀。
+- **细节顺手**：点一下就复制、列宽可拖、亮暗主题、中英界面。
 
-<img src="public/imgs/02.jpg" alt="设置" width="600" />
+## 界面截图
 
+| 视图 | 亮色 | 暗色 |
+|:---:|:---:|:---:|
+| 进程视图 | <img src="public/imgs/process-light.jpg" alt="进程视图 · 亮色" width="420"> | <img src="public/imgs/process-dark.jpg" alt="进程视图 · 暗色" width="420"> |
+| 进程详情 | <img src="public/imgs/detail-light.jpg" alt="进程详情抽屉 · 亮色" width="420"> | <img src="public/imgs/detail-dark.jpg" alt="进程详情抽屉 · 暗色" width="420"> |
+| 端口视图 | <img src="public/imgs/ports-light.jpg" alt="端口视图 · 亮色" width="420"> | <img src="public/imgs/ports-dark.jpg" alt="端口视图 · 暗色" width="420"> |
 
+## 快速开始
 
+1. 从 [Gitee](https://gitee.com/ShiXiongZhiDao/PortView/releases) 或 [GitHub](https://github.com/ShiXiongZhiDao/PortView/releases) 的 Releases 安装并启动。默认进入**受限模式**，不弹 UAC；需要完整权限时点击标题栏的「受限模式 · 提升权限」。
+2. 用顶部标签在**进程 / 端口**视图间切换；在搜索框输入名称、PID、端口或拼音，用下拉框按协议、状态、地址族收窄。
+3. 在进程视图点击 **CPU** 或 **内存** 排序，展开行看连接，双击行打开详情抽屉。
+4. 在端口视图点击端口 / 地址 / PID 复制，双击行跳到进程视图。
+5. 要结束进程，右键该行（或在详情抽屉点「结束」）并确认。`Ctrl+F` 聚焦搜索，`F5` 立即刷新快照。
 
-## ✅ 环境要求
+## 适用范围与限制
 
-- Windows 10 / 11（x64）
-- [Node.js](https://nodejs.org/) 与 **pnpm**
-- Rust 稳定版工具链（MSVC）以及 **WebView2 运行时**（Win11 自带）
-- 运行时需要**管理员权限**——见[为什么需要管理员](#-为什么需要管理员中文)
+- 自测支持 Windows 10 / 11 x64，其他平台可自行构建，需要 WebView2 运行时（Win11 自带）。
+- 只看本机，不扫描、不管理远程机器；端口视图只读。
+- 默认以**受限模式**启动，不弹 UAC。受保护进程的路径、资源与部分端点属主可能读不到；点击标题栏「受限模式」徽标，或到设置页点「以管理员身份重启」即可提升权限。
+- CPU / 内存可能显示 `—` / "采样中" / "无权限"：进程已退出或拒绝查询，这是真实的「读不到」，不是 0。
+- 定时刷新**不会**在窗口隐藏或失焦时暂停。想纯手动刷新，请关掉顶栏开关。
+- 只结束目标进程本身，不终止进程树。
+- 一次刷新是一份快照，不是实时流；连接状态可能在两次快照之间变化。
 
-## 🚀 快速开始
+### 为什么需要管理员？
+
+Windows 对非提权调用隐藏部分系统进程的路径与资源，也限制读取某些 TCP/UDP 表的属主与结束进程。提权后 PortView 才能读取完整路径、枚举全部端点属主，并在校验身份后结束进程。标题栏徽标始终显示实际权限状态。
+
+## 隐私
+
+匿名使用统计只记录应用启动及启动时的主题和语言；不上传进程、端口或地址数据。
+
+## 常见问题
+
+**安装包和源码是同一个程序吗？**
+是的。安装包由本仓库源码构建，发布页提供签名后的安装文件。
+
+**什么时候需要提升为管理员？**
+Windows 对非提权调用隐藏部分系统进程的路径与资源，也限制读取某些 TCP/UDP 表的属主。需要这些能力时，点击标题栏徽标或设置页按钮提权即可。
+
+**为什么显示 `—` / "采样中" / "无权限"？**
+该进程在两次快照之间退出了，或拒绝查询。PortView 如实显示「读不到」，而不是填 0。
+
+**窗口隐藏后定时刷新会停吗？**
+不会。当前不实现隐藏 / 失焦暂停。想要纯手动刷新，请关掉顶栏开关。
+
+**能用旧快照里的信息结束进程吗？**
+只有在身份仍匹配时才行。PortView 会重新打开进程，比对 PID + 创建时间，不一致就拒绝。看到提示后刷新列表再试。
+
+**为什么端口有记录却没有进程名？**
+非提权状态下部分系统端点无法映射到属主 PID，或属主进程在查询前已退出。提升权限并刷新后再看。
+
+## 从源码构建
+
+需要 [Node.js](https://nodejs.org/) 与 **pnpm**、Rust 稳定版工具链（MSVC），以及 WebView2 运行时。
 
 ```bash
 # 1. 安装前端依赖
 pnpm install
 
-# 2a. 仅前端，浏览器中打开（无 Tauri IPC，列表数据为空）
+# 2a. 仅前端：没有原生 IPC，列表会为空
 pnpm dev
 
-# 2b. 完整桌面应用——必须在「以管理员身份运行」的终端中执行
+# 2b. 完整桌面应用：默认以受限模式启动
 pnpm tauri dev
 ```
 
-> 在非管理员终端运行 `pnpm tauri dev` 会报 `os error 740`，因为程序清单要求 `requireAdministrator`。请右键终端 → **以管理员身份运行**后再执行。
-
-### 生产打包
+开发模式同样以受限模式启动；提权流程请用安装版测试，因为 `pnpm tauri dev` 会持有前端 dev server，重启后的提权实例可能没有可加载的页面。
 
 ```bash
 pnpm tauri build
 ```
 
-NSIS 安装包输出到 `target/release/bundle/nsis/`，文件名为 **`PortView_<版本号>_x64-setup.exe`**。安装后，程序（可执行文件、安装目录、开始菜单快捷方式、任务栏 / 托盘图标与卸载器）统一命名为 **PortView**，并使用自定义的奶油笑脸吉祥物应用图标；安装向导、卸载器与程序本体都不会出现 Tauri 默认图标。如需从新的 1024×1024 源图重新生成整套图标，执行 `pnpm tauri icon <源图.png>`（源图必须是真正的 PNG）。
+NSIS 安装包输出到 `target/release/bundle/nsis/`，文件名为 `PortView_<版本号>_x64-setup.exe`。安装后的程序、目录、快捷方式、托盘图标与卸载器都统一命名为 PortView。
 
-版本说明与安装包见 [Gitee Releases 页面](https://gitee.com/ShiXiongZhiDao/PortView/releases)。
+## 许可与鸣谢
 
-## 🖱️ 使用说明
+PortView 基于 [MIT License](LICENSE) 开源——你可以自由使用、修改、分发（含商用），只需保留版权声明。
 
-1. 点击"刷新"获取进程与连接的最新快照。
-2. 在搜索框输入名称 / 拼音 / PID / 端口进行过滤；用两个下拉框按协议、状态收窄范围。
-3. 点击 **CPU** 或 **内存** 表头切换排序字段与方向（降序 ↔ 升序），**默认按 CPU 从大到小**；拖动任意列表头右边缘可调整列宽。
-4. 在进程行上点击鼠标右键，可**打开程序地址**或**结束进程**；点击行内"连接"展开原始端点，点击"结束进程"经确认后终止。
-5. 点击齿轮图标打开**设置**，可切换主题 / 语言、打开仓库、检查更新、查看版本信息。
+由 Tauri 2、Vue 3、TypeScript、Vite、UnoCSS、Pinia、naive-ui 与 `pinyin-pro` 构建；原生数据通过 Windows API（`windows` crate）采集。字体使用 Fredoka 与 Nunito。
 
+## 支持作者
 
-## 🔒 为什么需要管理员？<a id="-为什么需要管理员中文"></a>
-
-可执行文件内嵌 `requireAdministrator` 清单，以便：
-
-- 读取受保护系统进程的完整路径与版本信息；
-- 枚举全部 TCP/UDP 表及其属主 PID；
-- 使用 `taskkill /F` 结束进程。
-
-非提权状态下程序仍可运行，但部分系统进程路径为空、资源占用显示为 0，且结束这些进程会失败。
-
-## 📁 项目结构
-
-```
-port-view/
-├─ src/                      # Vue 3 前端
-│  ├─ components/            # HeroHeader · FilterBar · ProcessList · TitleBar · SettingsModal
-│  ├─ composables/           # useTheme · useUpdate
-│  ├─ i18n/                  # 中英字典与 t()
-│  ├─ stores/                # Pinia store（合并视图、搜索、筛选、统计）
-│  ├─ utils/                 # openExternal()
-│  ├─ types.ts · App.vue · style.css
-├─ src-tauri/                # Rust 后端
-│  ├─ src/
-│  │  ├─ lib.rs              # Tauri 命令、系统托盘、窗体圆角
-│  │  └─ netinfo.rs          # WinAPI 采集（连接、进程、内存/CPU）
-│  ├─ capabilities/          # Tauri 权限
-│  └─ tauri.conf.json
-├─ public/
-│  ├─ fonts/                 # Fredoka / Nunito 本地字体
-```
-
-
-
-## 📄 许可证
-
-本项目基于 [MIT License](LICENSE) 开源——你可以自由使用、修改、分发（含商用），仅需保留版权声明。
-
-## ☕ 支持作者
-
-如果这个小工具帮到了你，可以扫码请师兄喝杯水 —— 你的支持是持续改进的动力。二维码从公开图片仓库加载，不随安装包分发：
+如果这个小工具帮到了你，可以扫码请师兄喝杯水。二维码从公开图片仓库加载，不随安装包分发：
 
 <table>
   <tr>
@@ -138,17 +136,21 @@ port-view/
   </tr>
   <tr>
     <td align="center">
-      <img src="https://raw.githubusercontent.com/ShiXiongZhiDao/BrandAssets/main/images/about/alipay.png" width="220" alt="支付宝">
+      <img src="https://raw.githubusercontent.com/ShiXiongZhiDao/BrandAssets/main/images/about/alipay.png" width="220" alt="支付宝收款码">
     </td>
     <td align="center">
-      <img src="https://raw.githubusercontent.com/ShiXiongZhiDao/BrandAssets/main/images/about/wechat-pay.png" width="220" alt="微信">
+      <img src="https://raw.githubusercontent.com/ShiXiongZhiDao/BrandAssets/main/images/about/wechat-pay.png" width="220" alt="微信收款码">
     </td>
   </tr>
 </table>
 
-
-## 📮 联系
+## 联系
 
 - 作者：师兄知道
+- 官网：[shixiongzhidao.cn](https://shixiongzhidao.cn)
 - 微信公众号：师兄知道
-- Issue / 建议：欢迎在仓库提出
+- 仓库与 Issue：[Gitee](https://gitee.com/ShiXiongZhiDao/PortView)
+
+扫码关注公众号「师兄知道」：
+
+<img src="https://raw.githubusercontent.com/ShiXiongZhiDao/BrandAssets/main/images/about/wechat-official.png" width="220" alt="师兄知道公众号二维码">

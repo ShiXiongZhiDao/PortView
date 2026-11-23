@@ -1,156 +1,156 @@
-# PortView
+<h1 align="center">PortView</h1>
 
-[English](#-english) · [中文](./README.zh-CN.md)
+<p align="center"><em>See what owns every port — in one calm, sticker-style window.</em></p>
 
-> The full Chinese version lives in **[README.zh-CN.md](./README.zh-CN.md)**.
+<p align="center">
+  [中文](./README.zh-CN.md) · English
+</p>
 
----
+<p align="center">
+  [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+  [![Platform: Windows](https://img.shields.io/badge/platform-Windows%2010%2F11-blue.svg)](https://gitee.com/ShiXiongZhiDao/PortView/releases)
+  [![Bilingual](https://img.shields.io/badge/UI-%E4%B8%AD%E8%8B%B1%20%2F%20EN-purple.svg)](./README.zh-CN.md)
+  [![Privacy](https://img.shields.io/badge/privacy-no%20personal%20data-orange.svg)](#privacy)
+  [![Release](https://img.shields.io/badge/release-latest-brightgreen.svg)](https://gitee.com/ShiXiongZhiDao/PortView/releases)
+</p>
 
-# 🇬🇧 English
+<p align="center">
+  <img src="public/imgs/process-light.jpg" alt="PortView process view" width="880">
+</p>
 
-A lightweight **Windows** desktop tool that lists every TCP/UDP endpoint, the process that owns each port, and — for every process — its memory footprint and CPU usage. Kill a process, fuzzy-search by name / pinyin / PID / port, and sort by resource usage, all in one sticker-style interface.
+## Download
 
-Built with **Tauri 2 + Vue 3 + TypeScript + Vite + UnoCSS + Pinia + naive-ui**.
+Tested on Windows 10 / 11 x64; other platforms can be built from source. Open a channel link below to download from its release page:
 
-> Repository: <https://gitee.com/ShiXiongZhiDao/PortView>
+| Form | File | Notes | Channel |
+|---|---|---|---|
+| Installer | `PortView_<version>_x64-setup.exe` | Installs for the current user, no admin rights needed to install; supports in-app updates | [Gitee](https://gitee.com/ShiXiongZhiDao/PortView/releases) · [GitHub](https://github.com/ShiXiongZhiDao/PortView/releases) |
+| Portable | `PortView_<version>_x64-portable.zip` | Unzip and run; new versions need a manual download | [Gitee](https://gitee.com/ShiXiongZhiDao/PortView/releases) · [GitHub](https://github.com/ShiXiongZhiDao/PortView/releases) |
 
-## ✨ Features
+Prefer compiling it yourself? See [Build from source](#build-from-source). PortView starts in **limited mode** without a UAC prompt. Elevate from the title bar or Settings when you need full data. See [Why administrator?](#why-administrator).
 
-- **Process ↔ port unified view** — every running process is listed (including processes with no network connection, e.g. Everything), together with its TCP count, UDP count, listening ports and an aggregated port summary. Expand a row to inspect every raw connection (protocol / local address / remote address / state).
-- **Per-process memory & CPU** — physical working set and CPU percentage (same convention as Task Manager) for each process. Click the **CPU / Memory** column header to sort; results are sorted by **CPU descending by default**.
-- **Resizable columns** — drag any column header edge to adjust its width; widths are remembered between launches.
-- **Right-click context menu** — on any process row: **Open file location** (reveals the program in Explorer) and **Kill process** (with confirmation).
-- **Fuzzy search** — match by process name, software name, full path, PID, port, and Chinese **pinyin / initials** (powered by `pinyin-pro`).
-- **Filters** — filter by protocol (All / TCP / UDP) and by connection state (LISTENING / ESTABLISHED / TIME_WAIT / CLOSE_WAIT / Other), stacked with the search query.
-- **Manual refresh** — data is a snapshot taken only when you press **Refresh** (or after killing a process); there is no background polling.
-- **Terminate process** — `taskkill /F` with a confirmation popover; critical system processes get an extra red warning.
-- **Bilingual UI** — switch between 简体中文 and English in Settings; the choice is persisted (the tray menu follows it too).
-- **Light / Dark / System theme**, persisted.
-- **Check for updates** — queries the Gitee Releases API, compares semantic versions, and links to the new release.
+## What it is
 
+PortView is a small local Windows tool that answers two questions: **which process owns a port, and how much CPU and memory is it using?** Everything stays on your computer.
 
-## 🧱 Tech Stack
+## Core features
 
-| Layer | Choice |
-|---|---|
-| Desktop shell | Tauri 2 (Rust) |
-| UI framework | Vue 3 (`<script setup>`) |
-| Language | TypeScript (strict) |
-| Bundler | Vite |
-| Styling | UnoCSS (`preset-wind3`) |
-| State | Pinia |
-| Components | naive-ui |
-| Localization | Custom lightweight i18n singleton (zh / en) |
-| Pinyin search | pinyin-pro |
-| Native APIs | Windows `iphlpapi`, ToolHelp, PSAPI, DWM via the `windows` crate |
+- **Two views** — processes or ports, switch with one click at the top.
+- **Fast search & filters** — search by name, PID, port or pinyin, and filter by protocol or state.
+- **Metrics at a glance** — CPU, memory, connections and paths; `—` means unreadable, never a fake zero.
+- **Auto + manual refresh** — updates every 3 seconds by default, or refresh any time yourself.
+- **Safer termination** — checks process identity before ending it, so you don't kill the wrong one.
+- **Small touches** — click to copy, resizable columns, light/dark themes and Chinese/English UI.
 
+## Screenshots
 
-## Preview
-<img src="public/imgs/01.jpg" alt="主界面" width="600" />
+| View | Light | Dark |
+|:---:|:---:|:---:|
+| Processes | <img src="public/imgs/process-light.jpg" alt="Process view, light theme" width="420"> | <img src="public/imgs/process-dark.jpg" alt="Process view, dark theme" width="420"> |
+| Process detail | <img src="public/imgs/detail-light.jpg" alt="Process detail drawer, light theme" width="420"> | <img src="public/imgs/detail-dark.jpg" alt="Process detail drawer, dark theme" width="420"> |
+| Ports | <img src="public/imgs/ports-light.jpg" alt="Port view, light theme" width="420"> | <img src="public/imgs/ports-dark.jpg" alt="Port view, dark theme" width="420"> |
 
-<img src="public/imgs/02.jpg" alt="设置" width="600" />
+## Quick start
 
+1. Install from the Releases page on [Gitee](https://gitee.com/ShiXiongZhiDao/PortView/releases) or [GitHub](https://github.com/ShiXiongZhiDao/PortView/releases) and launch it. It opens in **limited mode** without UAC. Click **Limited mode · Elevate** in the title bar when you need full access.
+2. Use the top tabs to switch between **Process** and **Port**. Type in the search box to match names, PIDs, ports or pinyin; use the dropdowns for protocol, state and address family.
+3. In the process view, click **CPU** or **Memory** to sort, expand a row for its connections, or double-click the row to open the detail drawer.
+4. In the port view, click a port, address or PID to copy it; double-click a row to jump to the process view.
+5. To end a process, right-click its row (or use the button in the detail drawer) and confirm. `Ctrl+F` focuses search, `F5` takes a fresh snapshot.
 
+## Scope and limits
 
-## ✅ Requirements
+- Tested on Windows 10 / 11 x64; other platforms can be built from source. The WebView2 Runtime is required (preinstalled on Windows 11).
+- Runs locally. It never scans or manages remote machines, and the port view is read-only.
+- Starts in **limited mode** by default, with no UAC prompt. Protected process paths, metrics, and some endpoint owners may be unavailable. Click the **Limited mode** badge in the title bar or use **Settings → Restart as administrator** to elevate.
+- CPU / memory may be `—`, "Sampling" or "No access" for processes that exit or deny access. This is a real "unknown", not zero.
+- Timed refresh does **not** pause when the window is hidden or loses focus. Turn the switch off for manual-only refresh.
+- Only the target process is terminated; there is no process-tree termination.
+- One refresh is one snapshot, not a live stream. Connection state can change between snapshots.
 
-- Windows 10 / 11 (x64)
-- [Node.js](https://nodejs.org/) + **pnpm**
-- Rust toolchain (stable, MSVC) and the **WebView2 Runtime** (preinstalled on Windows 11)
-- **Administrator rights** at runtime — see [Why administrator](#-why-administrator-english)
+### Why administrator?
 
-## 🚀 Getting Started
+Windows hides protected processes' image paths and metrics from non-elevated callers, and limits access to some TCP/UDP owner tables and to process termination. Elevating lets PortView read full paths, enumerate all endpoint owners, and terminate a process only after checking its identity. The title bar badge always shows the actual permission level.
+
+## Privacy
+
+Anonymous usage statistics record only app launches and the theme and language in use at launch; no process, port or address data is uploaded.
+
+## FAQ
+
+**Is the `.exe` really the same program as the source?**
+Yes. The installer and the source build come from this repository; the release page carries the signed installers.
+
+**Why would I elevate to administrator?**
+Windows hides the image path and metrics of protected processes, and denies access to some TCP/UDP owner tables, for non-elevated callers. Elevating lets PortView read them and terminate a process only after checking its identity.
+
+**Why do I see `—`, "Sampling" or "No access"?**
+That process exited between snapshots or denied the query. PortView shows the real state instead of pretending the value is zero.
+
+**Does timed refresh stop when the window is hidden?**
+No. There is no hidden/focus-based pause. If you want manual-only refresh, switch it off in the top bar.
+
+**Can I end a process from an old snapshot?**
+Only if its identity still matches. PortView re-opens the process, compares PID + creation time, and refuses if the process was replaced. Refresh and try again if you see that message.
+
+**Why is a port shown with no process name?**
+Some system endpoints cannot be mapped to an owning PID without elevation, or the owner exited before the query. Elevate and refresh, or run as administrator.
+
+## Build from source
+
+Requirements: [Node.js](https://nodejs.org/) with **pnpm**, a stable Rust toolchain (MSVC), and WebView2 Runtime.
 
 ```bash
 # 1. Install frontend dependencies
 pnpm install
 
-# 2a. Frontend only, in a browser (no Tauri IPC, lists will be empty)
+# 2a. Frontend only — no native IPC, so lists stay empty
 pnpm dev
 
-# 2b. Full desktop app — MUST run from an elevated (Administrator) shell
+# 2b. Full desktop app — starts in limited mode
 pnpm tauri dev
 ```
 
-> Launching `pnpm tauri dev` from a non-elevated terminal fails with `os error 740`, because the app manifest requests `requireAdministrator`. Right-click your terminal → **Run as administrator**, then run the command.
-
-### Production build
+The dev app also starts in limited mode. Test the elevation flow with an installed build: `pnpm tauri dev` owns the frontend dev server, so a relaunched elevated instance may not have a server to load from.
 
 ```bash
 pnpm tauri build
 ```
 
-The NSIS installer is emitted under `target/release/bundle/nsis/` as **`PortView_<version>_x64-setup.exe`**. After installation the program — executable, install folder, Start Menu shortcut, taskbar/tray icon and uninstaller — is named **PortView** and uses the custom cream mascot app icon. The installer wizard, the uninstaller and the app itself never fall back to the default Tauri icon. To regenerate the whole icon set from a new 1024×1024 source, run `pnpm tauri icon <source.png>` (the source must be a real PNG).
+The NSIS installer is written under `target/release/bundle/nsis/` as `PortView_<version>_x64-setup.exe`. The installed app, its folder, shortcuts, tray icon and uninstaller are all named PortView.
 
-Release notes and installers are published on the [Gitee Releases page](https://gitee.com/ShiXiongZhiDao/PortView/releases).
+## License and credits
 
-## 🖱️ Usage
+PortView is open source under the [MIT License](LICENSE) — use, modify and redistribute it, including commercially, as long as the copyright notice is kept.
 
-1. Press **Refresh** to take a fresh snapshot of processes and connections.
-2. Type in the search box to filter by name / pinyin / PID / port; use the two dropdowns to narrow by protocol and state.
-3. Click the **CPU** or **Memory** header to change sort field and direction (desc ↔ asc); the list is sorted by **CPU descending** by default. Drag any column header edge to resize the column.
-4. Right-click a process row to **open its file location** or **kill** it; click **Connections** on a row to expand its raw endpoints, or click **Kill** to terminate it after confirmation.
-5. Open **Settings** via the gear icon to change theme/language, open the repository, check for updates, or view version info.
+Built with Tauri 2, Vue 3, TypeScript, Vite, UnoCSS, Pinia, naive-ui and `pinyin-pro`; native data comes from Windows APIs via the `windows` crate. Fonts are Fredoka and Nunito.
 
+## Support the author
 
-## 🔒 Why administrator? <a id="-why-administrator-english"></a>
-
-The executable embeds a `requireAdministrator` manifest so it can:
-
-- read the full image path / version info of protected system processes;
-- enumerate all TCP/UDP tables and their owning PIDs;
-- terminate processes with `taskkill /F`.
-
-Without elevation the app still runs, but some system processes show blank paths and zero resource usage, and killing them will fail.
-
-## 📁 Project Structure
-
-```
-port-view/
-├─ src/                      # Vue 3 frontend
-│  ├─ components/            # HeroHeader · FilterBar · ProcessList · TitleBar · SettingsModal
-│  ├─ composables/           # useTheme · useUpdate
-│  ├─ i18n/                  # zh/en dictionaries + t()
-│  ├─ stores/                # Pinia store (merge view, search, filter, stats)
-│  ├─ utils/                 # openExternal()
-│  ├─ types.ts · App.vue · style.css
-├─ src-tauri/                # Rust backend
-│  ├─ src/
-│  │  ├─ lib.rs              # Tauri commands, tray, window rounded corners
-│  │  └─ netinfo.rs          # WinAPI collection (connections, processes, memory/CPU)
-│  ├─ capabilities/          # Tauri permissions
-│  └─ tauri.conf.json
-├─ public/
-│  ├─ fonts/                 # Fredoka / Nunito (self-hosted)
-```
-
-## 📄 License
-
-This project is open-sourced under the [MIT License](LICENSE) — free to use, modify and redistribute (including commercially), provided the copyright notice is retained.
-
-## ☕ Support the Author
-
-If this little tool saved you some time, you can buy the author a coffee — your support keeps the project improving. QR codes are loaded from a public image repository and are not bundled with the installer:
+If this tool saved you a few minutes, you can buy the author a coffee. QR codes load from a public image repository and are not bundled with the installer:
 
 <table>
   <tr>
-    <th align="center">支付宝</th>
-    <th align="center">微信</th>
+    <th align="center">Alipay</th>
+    <th align="center">WeChat Pay</th>
   </tr>
   <tr>
     <td align="center">
-      <img src="https://raw.githubusercontent.com/ShiXiongZhiDao/BrandAssets/main/images/about/alipay.png" width="220" alt="Alipay">
+      <img src="https://raw.githubusercontent.com/ShiXiongZhiDao/BrandAssets/main/images/about/alipay.png" width="220" alt="Alipay QR code">
     </td>
     <td align="center">
-      <img src="https://raw.githubusercontent.com/ShiXiongZhiDao/BrandAssets/main/images/about/wechat-pay.png" width="220" alt="WeChat Pay">
+      <img src="https://raw.githubusercontent.com/ShiXiongZhiDao/BrandAssets/main/images/about/wechat-pay.png" width="220" alt="WeChat Pay QR code">
     </td>
   </tr>
 </table>
 
-
-
-## 📮 Contact
+## Contact
 
 - Author: 师兄知道 (ShiXiongZhiDao)
+- Website: [shixiongzhidao.cn](https://shixiongzhidao.cn)
 - WeChat Official Account: 师兄知道
-- Issues & suggestions: welcome in this repository
+- Repository and issues: [Gitee](https://gitee.com/ShiXiongZhiDao/PortView)
+
+Scan to follow 师兄知道 on WeChat:
+
+<img src="https://raw.githubusercontent.com/ShiXiongZhiDao/BrandAssets/main/images/about/wechat-official.png" width="220" alt="WeChat Official Account QR code">

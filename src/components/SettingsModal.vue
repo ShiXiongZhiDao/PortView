@@ -4,8 +4,10 @@ import appIcon from "../../src-tauri/icons/app-icon.svg?url";
 import { useTheme, type ThemeMode } from "../composables/useTheme";
 import { useI18n, type LangPreference } from "../i18n";
 import { useUpdate } from "../composables/useUpdate";
+import { useConnectionsStore } from "../stores/connections";
+import { useAutoRefresh, REFRESH_INTERVALS, type RefreshInterval } from "../composables/useAutoRefresh";
+import { useElevation } from "../composables/useElevation";
 import { openExternal } from "../utils/open";
-import { trackSettingsPageViewed } from "../lib/analytics";
 import { wireRemoteImages } from "../lib/remote-images";
 
 const props = defineProps<{ show: boolean }>();
@@ -13,6 +15,15 @@ const emit = defineEmits<{ (e: "update:show", v: boolean): void }>();
 
 const { themeMode, setTheme } = useTheme();
 const { langPref, setLang, t } = useI18n();
+const store = useConnectionsStore();
+const auto = useAutoRefresh(store);
+const { elevate, elevating } = useElevation();
+const intervalChoices = computed(() =>
+  REFRESH_INTERVALS.map((n) => ({ label: `${n}s`, value: n })),
+);
+function onIntervalChange(v: number) {
+  auto.setIntervalSec(v as RefreshInterval);
+}
 const {
   status,
   currentVersion,
@@ -37,7 +48,6 @@ watch(
     if (v) {
       void loadCurrentVersion();
       scheduleAutoCheck();
-      trackSettingsPageViewed();
       // modal 内容随 show 才渲染，要等 DOM 出来再扫描 data-remote-img。
       void nextTick(() => wireRemoteImages(settingsRoot.value));
     }
@@ -167,6 +177,56 @@ const ISSUES_URL = "https://github.com/ShiXiongZhiDao/PortView/issues";
                 <input v-model="langValue" type="radio" :value="c.value" class="h-4 w-4 accent-blue-600" />
                 {{ c.label }}
               </label>
+            </div>
+          </div>
+          <div class="flex flex-col gap-2.5">
+            <span class="text-xs font-extrabold tracking-wider" :style="{ color: 'var(--pv-text-soft)' }">
+              {{ t("settings.refresh") }}
+            </span>
+            <div
+              class="flex items-center gap-3 rounded-xl px-4 py-2.5"
+              :style="{ border: '2px solid var(--pv-stroke)', background: 'var(--pv-card-2)' }"
+            >
+              <n-switch :value="auto.enabled.value" @update:value="auto.setEnabled" />
+              <span class="text-sm font-bold" :style="{ color: 'var(--pv-text)' }">{{ t("refresh.auto") }}</span>
+              <n-select
+                class="ml-auto w-24"
+                size="small"
+                :value="auto.intervalSec.value"
+                :options="intervalChoices"
+                :disabled="!auto.enabled.value"
+                @update:value="onIntervalChange"
+              />
+            </div>
+            <span class="text-xs" :style="{ color: 'var(--pv-text-soft)' }">{{ t("refresh.tip") }}</span>
+          </div>
+
+          <div class="flex flex-col gap-2.5">
+            <span class="text-xs font-extrabold tracking-wider" :style="{ color: 'var(--pv-text-soft)' }">
+              {{ t("settings.permission") }}
+            </span>
+            <div
+              class="flex items-center gap-3 rounded-xl px-4 py-2.5"
+              :style="{ border: '2px solid var(--pv-stroke)', background: 'var(--pv-card-2)' }"
+            >
+              <div class="flex min-w-0 flex-col">
+                <span class="text-sm font-bold" :style="{ color: 'var(--pv-text)' }">
+                  {{ store.isElevated ? t("status.elevated") : t("status.limited") }}
+                </span>
+                <span class="text-xs" :style="{ color: 'var(--pv-text-soft)' }">
+                  {{ store.isElevated ? t("status.elevatedTip") : t("status.limitedTip") }}
+                </span>
+              </div>
+              <n-button
+                v-if="!store.isElevated"
+                class="ml-auto shrink-0"
+                size="small"
+                type="primary"
+                :loading="elevating"
+                @click="elevate"
+              >
+                {{ t("settings.elevateAction") }}
+              </n-button>
             </div>
           </div>
         </div>

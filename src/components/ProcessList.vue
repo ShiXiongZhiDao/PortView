@@ -5,13 +5,32 @@ import { useDialog, useMessage } from "naive-ui";
 import { useConnectionsStore } from "../stores/connections";
 import { useTheme } from "../composables/useTheme";
 import { useI18n } from "../i18n";
-import type { ProcessInfo } from "../types";
+import { useClipboard } from "../composables/useClipboard";
+import { useElevation } from "../composables/useElevation";
+import { errorCode, killErrorMessage } from "../lib/kill-error";
+import { isCriticalProcess } from "../lib/process-safety";
+import ProcessDetail from "./ProcessDetail.vue";
+import type { MetricStatus, ProcessInfo } from "../types";
 
 const store = useConnectionsStore();
 const message = useMessage();
 const dialog = useDialog();
 const { isDark } = useTheme();
 const { t } = useI18n();
+const { copy } = useClipboard();
+const { elevate } = useElevation();
+
+/** 详情抽屉：单击进程名复制，双击整行打开详情 */
+const detailPid = ref<number | null>(null);
+const showDetail = ref(false);
+function openDetail(pid: number) {
+  detailPid.value = pid;
+  showDetail.value = true;
+}
+function onRowDblClick(e: MouseEvent, pid: number) {
+  if ((e.target as HTMLElement).closest(".row-actions")) return;
+  openDetail(pid);
+}
 
 /** 当前展开的进程 PID（同时只展开一个） */
 const expandedPid = ref<number | null>(null);
@@ -31,50 +50,38 @@ function toggleSort(key: SortKey) {
     sortDir.value = "desc";
   }
 }
-
+function metricValue(p: ProcessInfo, key: SortKey): number {
+  const v = key === "cpu" ? p.cpuPercent : p.memoryBytes;
+  return v ?? -1;
+}
 const rows = computed<(ProcessInfo & { _ports: number[] })[]>(() => {
   const list = [...(store.filteredProcesses as (ProcessInfo & { _ports: number[] })[])];
   const key = sortKey.value;
   const dir = sortDir.value === "desc" ? -1 : 1;
-  return list.sort((a, b) => dir * (a[key] - b[key]));
+  return list.sort((a, b) => dir * (metricValue(a, key) - metricValue(b, key)));
 });
 
-/* ---------- 列定义与可拖拽列宽（所有列均可调整） ---------- */
-type ColKey =
-  | "process"
-  | "pid"
-  | "cpu"
-  | "memory"
-  | "tcp"
-  | "udp"
-  | "listening"
-  | "ports"
-  | "status"
-  | "actions";
+/* ---------- 列定义与可拖拽列宽（贴纸精修：进程 / CPU / 内存 / 连接 / 端口 / 操作） ---------- */
+type ColKey = "process" | "cpu" | "memory" | "connections" | "ports" | "actions";
 
+/** 默认宽度与端口视图保持同一节奏：整表约 1160px，1280 窗口内容区约 1224px */
 const COL_DEFAULTS: Record<ColKey, { width: number; min: number }> = {
-  process: { width: 220, min: 130 },
-  pid: { width: 70, min: 48 },
-  cpu: { width: 76, min: 52 },
-  memory: { width: 96, min: 60 },
-  tcp: { width: 56, min: 40 },
-  udp: { width: 56, min: 40 },
-  listening: { width: 56, min: 40 },
-  ports: { width: 220, min: 110 },
-  status: { width: 86, min: 60 },
-  actions: { width: 150, min: 132 },
+  process: { width: 300, min: 180 },
+  cpu: { width: 110, min: 80 },
+  memory: { width: 110, min: 76 },
+  connections: { width: 140, min: 104 },
+  ports: { width: 280, min: 140 },
+  actions: { width: 132, min: 120 },
 };
+const WIDTH_KEY = "port-view-col-widths-v2";
 
-/** 读取持久化列宽（损坏/越界数据自动回退） */
 function loadColWidths(): Partial<Record<ColKey, number>> {
   try {
-    const raw = JSON.parse(localStorage.getItem("port-view-col-widths") || "{}") as Record<string, unknown>;
+    const raw = JSON.parse(localStorage.getItem(WIDTH_KEY) || "{}") as Record<string, unknown>;
     const out: Partial<Record<ColKey, number>> = {};
     (Object.keys(COL_DEFAULTS) as ColKey[]).forEach((k) => {
       const v = Number(raw[k]);
-      if (Number.isFinite(v) && v > 0) {
-        out[k] = Math.min(Math.max(v, COL_DEFAULTS[k].min), 600);
-      }
+      if (Number.isFinite(v) && v > 0) out[k] = Math.min(Math.max(v, COL_DEFAULTS[k].min), 600);
     });
     return out;
   } catch {
@@ -88,26 +95,18 @@ const colWidths = reactive<Record<ColKey, number>>({
   ) as Record<ColKey, number>),
   ...loadColWidths(),
 });
-
 function widthOf(key: ColKey): string {
   return `${colWidths[key]}px`;
 }
-
-/** 全部列像素宽度之和 */
 const totalWidth = computed(() =>
   (Object.keys(COL_DEFAULTS) as ColKey[]).reduce((sum, k) => sum + colWidths[k], 0),
 );
-
 const columns = computed<{ key: ColKey; label: string; sort?: SortKey }[]>(() => [
   { key: "process", label: t("list.col.process") },
-  { key: "pid", label: t("list.col.pid") },
   { key: "cpu", label: t("list.col.cpu"), sort: "cpu" },
   { key: "memory", label: t("list.col.memory"), sort: "memory" },
-  { key: "tcp", label: t("list.col.tcp") },
-  { key: "udp", label: t("list.col.udp") },
-  { key: "listening", label: t("list.col.listening") },
+  { key: "connections", label: t("list.col.connections") },
   { key: "ports", label: t("list.col.ports") },
-  { key: "status", label: t("list.col.status") },
   { key: "actions", label: t("list.col.actions") },
 ]);
 
@@ -116,9 +115,7 @@ const CELL_GAP = 12;
 const H_PADDING = 40;
 const innerWidth = computed(() => totalWidth.value + (columns.value.length - 1) * CELL_GAP + H_PADDING);
 
-/** 拖拽调整列宽 */
 let resizing: { key: ColKey; startX: number; startWidth: number } | null = null;
-
 function startResize(e: MouseEvent, key: ColKey) {
   resizing = { key, startX: e.clientX, startWidth: colWidths[key] };
   document.body.style.cursor = "col-resize";
@@ -140,7 +137,7 @@ function stopResize() {
   document.body.style.userSelect = "";
   document.removeEventListener("mousemove", onResizeMove);
   try {
-    localStorage.setItem("port-view-col-widths", JSON.stringify(colWidths));
+    localStorage.setItem(WIDTH_KEY, JSON.stringify(colWidths));
   } catch {
     /* 持久化失败忽略 */
   }
@@ -151,9 +148,7 @@ const headerScrollEl = ref<HTMLElement | null>(null);
 const listScrollEl = ref<HTMLElement | null>(null);
 function onListScroll() {
   const el = listScrollEl.value;
-  if (headerScrollEl.value && el) {
-    headerScrollEl.value.scrollLeft = el.scrollLeft;
-  }
+  if (headerScrollEl.value && el) headerScrollEl.value.scrollLeft = el.scrollLeft;
   closeCtx();
 }
 
@@ -164,7 +159,6 @@ interface CtxState {
   row: ProcessInfo & { _ports: number[] };
 }
 const ctxMenu = ref<CtxState | null>(null);
-
 function openCtx(e: MouseEvent, row: ProcessInfo & { _ports: number[] }) {
   const menuW = 200;
   const menuH = 92;
@@ -207,66 +201,80 @@ async function ctxOpenLocation() {
     message.error(String(err));
   }
 }
-
 function ctxKill() {
   const row = ctxMenu.value?.row;
   closeCtx();
   if (!row) return;
   dialog.warning({
     title: t("btn.kill"),
-    content: isCritical(row.pid, row.name)
+    content: isCriticalProcess(row.pid, row.name)
       ? t("confirm.critical", { name: row.name, pid: row.pid })
       : t("confirm.kill", { name: row.name, pid: row.pid }),
     positiveText: t("btn.kill"),
     negativeText: t("btn.cancel"),
-    onPositiveClick: () => handleKill(row.pid),
+    onPositiveClick: () => handleKill(row.pid, row.creationTime100ns),
   });
 }
-
-async function handleKill(pid: number) {
+async function handleKill(pid: number, creationTime100ns: string | null) {
   try {
-    const result = await store.kill(pid);
-    message.success(result);
+    await store.kill(pid, creationTime100ns);
+    message.success(t("toast.killed", { pid }));
   } catch (e) {
-    message.error(String(e));
+    // 受限模式下权限不足：当场引导提权；核心系统进程不误导用户去提权（ADR-0010）
+    if (errorCode(e) === "ACCESS_DENIED" && !store.isElevated) {
+      dialog.warning({
+        title: t("elevate.title"),
+        content: t("elevate.needAdmin"),
+        positiveText: t("elevate.action"),
+        negativeText: t("btn.cancel"),
+        onPositiveClick: () => elevate(),
+      });
+    } else {
+      message.error(killErrorMessage(t, e));
+    }
   } finally {
-    await store.refresh();
+    await store.refreshSnapshot();
   }
 }
 
-function isCritical(pid: number, name: string): boolean {
-  const n = name.toLowerCase();
-  return (
-    pid <= 4 ||
-    n === "system" ||
-    n === "svchost.exe" ||
-    n === "csrss.exe" ||
-    n === "wininit.exe" ||
-    n === "services.exe" ||
-    n === "lsass.exe"
-  );
+/* ---------- 指标展示：读不到时不伪装成 0 ---------- */
+function metricText(value: number | null, status: MetricStatus, format: (v: number) => string): string {
+  if (status === "sampling") return t("metric.sampling");
+  if (status === "accessDenied") return t("metric.accessDenied");
+  if (status === "processExited") return t("metric.processExited");
+  if (status === "unavailable" || value === null) return "—";
+  return format(value);
 }
-
-/** 字节数格式化为可读内存（MB / GB） */
-function formatMem(bytes: number): string {
-  if (!bytes) return "0 MB";
-  const mb = bytes / 1024 / 1024;
+function formatMem(v: number): string {
+  const mb = v / 1024 / 1024;
   if (mb >= 1024) return `${(mb / 1024).toFixed(2)} GB`;
-  return `${mb.toFixed(mb < 10 ? 1 : 0)} MB`;
+  return `${mb.toFixed(mb < 10 && mb > 0 ? 1 : 0)} MB`;
 }
-
-/** CPU 占用百分比文本 */
-function formatCpu(cpu: number): string {
-  return `${(cpu ?? 0).toFixed(1)}%`;
+function memText(row: ProcessInfo): string {
+  return metricText(row.memoryBytes, row.memoryStatus, formatMem);
 }
-
-/** CPU 占用越高颜色越暖，便于快速定位吃 CPU 的进程 */
-function cpuColor(cpu: number): string {
-  if (cpu >= 25) return "#DC2626";
-  if (cpu >= 8) return "#D97706";
+function formatCpu(v: number): string {
+  return `${v.toFixed(1)}%`;
+}
+function cpuText(row: ProcessInfo): string {
+  return metricText(row.cpuPercent, row.cpuStatus, formatCpu);
+}
+function cpuColor(row: ProcessInfo): string {
+  if (row.cpuPercent === null) return "var(--pv-text-faint)";
+  if (row.cpuPercent >= 25) return "#DC2626";
+  if (row.cpuPercent >= 8) return "#D97706";
   return "var(--pv-text-soft)";
 }
-
+function cpuBarWidth(row: ProcessInfo): string {
+  const v = row.cpuPercent ?? 0;
+  return `${Math.max(0, Math.min(100, v * 4))}%`;
+}
+function cpuBarColor(row: ProcessInfo): string {
+  if (row.cpuPercent === null) return "var(--pv-text-faint)";
+  if (row.cpuPercent >= 25) return "#DC2626";
+  if (row.cpuPercent >= 8) return "#D97706";
+  return "var(--pv-green)";
+}
 function iconStyle(row: ProcessInfo) {
   const dark = isDark.value;
   if (row.tcp > 0) return dark ? { bg: "#14532D", text: "#86EFAC" } : { bg: "#DCFCE7", text: "#166534" };
@@ -311,21 +319,21 @@ function iconStyle(row: ProcessInfo) {
       </div>
     </div>
 
-    <!-- 列表滚动区（垂直 + 水平） -->
+    <!-- 列表滚动区 -->
     <div ref="listScrollEl" class="min-h-0 flex-1 overflow-auto" @scroll="onListScroll">
       <div v-if="rows.length" :style="{ width: innerWidth + 'px', minWidth: '100%' }">
         <template v-for="row in rows" :key="row.pid">
-          <!-- 单行 -->
           <div
-            class="pv-row flex items-center gap-3 px-5 py-2.5 transition-colors"
+            class="pv-row flex min-h-[52px] items-center gap-3 px-5 py-2.5 transition-colors"
             :class="{ 'pv-row-expanded': expandedPid === row.pid }"
-            :style="{ borderBottom: '1px dashed var(--pv-border)' }"
+            :style="{ borderBottom: '1px solid var(--pv-border)' }"
             @contextmenu.prevent="openCtx($event, row)"
+            @dblclick="onRowDblClick($event, row.pid)"
           >
-            <!-- 图标 + 名称 -->
+            <!-- 进程：图标 + 名称（单击复制）+ 软件名 / PID（单击复制） -->
             <div class="flex min-w-0 items-center gap-2.5" :style="{ width: widthOf('process') }">
               <div
-                class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg font-heading text-sm font-bold"
+                class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg font-heading text-sm font-bold"
                 :style="{
                   background: iconStyle(row).bg,
                   color: iconStyle(row).text,
@@ -335,119 +343,111 @@ function iconStyle(row: ProcessInfo) {
                 {{ row.name.charAt(0).toUpperCase() }}
               </div>
               <div class="min-w-0 flex-1">
-                <div class="truncate text-sm font-bold" :style="{ color: 'var(--pv-text)' }" :title="row.name">
+                <button
+                  class="pv-text-btn block w-full truncate text-left text-sm font-bold"
+                  :style="{ color: 'var(--pv-text)' }"
+                  :title="t('port.copyProcess')"
+                  @click.stop="copy(row.name, t('port.col.process'))"
+                >
                   {{ row.name }}
-                </div>
-                <div class="truncate text-[11px]" :style="{ color: 'var(--pv-text-faint)' }" :title="row.path">
-                  {{ row.software || row.path || "—" }}
+                </button>
+                <div class="flex min-w-0 items-center gap-1 text-[11px]" :style="{ color: 'var(--pv-text-faint)' }">
+                  <span class="min-w-0 truncate" :title="row.path">{{ row.software || row.path || "—" }}</span>
+                  <span>·</span>
+                  <button
+                    class="pv-text-btn shrink-0 tabular-nums"
+                    :title="t('port.copyPid')"
+                    @click.stop="copy(String(row.pid), 'PID')"
+                  >
+                    {{ row.pid }}
+                  </button>
                 </div>
               </div>
             </div>
 
-            <div class="tabular-nums text-sm" :style="{ width: widthOf('pid'), color: 'var(--pv-text-soft)' }">
-              {{ row.pid }}
-            </div>
-
-            <!-- CPU 占用 -->
-            <div
-              class="tabular-nums text-sm font-bold"
-              :style="{ width: widthOf('cpu'), color: cpuColor(row.cpu) }"
-              :title="`CPU ${formatCpu(row.cpu)}`"
-            >
-              {{ formatCpu(row.cpu) }}
+            <!-- CPU：数值 + 贴纸细条 -->
+            <div class="cpu-cell" :style="{ width: widthOf('cpu') }" :title="`CPU ${cpuText(row)}`">
+              <span class="cpu-value" :style="{ color: cpuColor(row) }">{{ cpuText(row) }}</span>
+              <span class="cpu-track">
+                <i :style="{ width: cpuBarWidth(row), background: cpuBarColor(row) }"></i>
+              </span>
             </div>
 
             <!-- 内存工作集 -->
             <div
               class="tabular-nums text-sm"
               :style="{ width: widthOf('memory'), color: 'var(--pv-text-soft)' }"
-              :title="`${row.memory.toLocaleString()} 字节`"
+              :title="row.memoryBytes === null ? memText(row) : `${row.memoryBytes.toLocaleString()} 字节`"
             >
-              {{ formatMem(row.memory) }}
+              {{ memText(row) }}
             </div>
 
-            <div class="tabular-nums text-sm font-bold" :style="{ width: widthOf('tcp'), color: 'var(--pv-text)' }">
-              {{ row.tcp }}
-            </div>
-            <div class="tabular-nums text-sm font-bold" :style="{ width: widthOf('udp'), color: 'var(--pv-text)' }">
-              {{ row.udp }}
-            </div>
-            <div
-              class="tabular-nums text-sm font-bold"
-              :style="{ width: widthOf('listening'), color: 'var(--pv-text)' }"
-            >
-              {{ row.listening }}
+            <!-- 连接：TCP / UDP / 监听合并，去掉三个重复数字列与 pill -->
+            <div class="flex items-center gap-2 text-xs font-bold" :style="{ width: widthOf('connections'), color: 'var(--pv-text)' }">
+              <template v-if="row.tcp + row.udp > 0">
+                <span class="flex items-center gap-1">
+                  <i class="conn-dot" :style="{ background: 'var(--pv-green)' }"></i>
+                  TCP {{ row.tcp }}
+                </span>
+                <span v-if="row.listening" class="flex items-center gap-1" :style="{ color: 'var(--pv-amber-text)' }">
+                  <i class="conn-dot" :style="{ background: 'var(--pv-amber-text)' }"></i>
+                  监听 {{ row.listening }}
+                </span>
+              </template>
+              <span v-else :style="{ color: 'var(--pv-text-faint)' }">—</span>
             </div>
 
-            <!-- 端口 -->
+            <!-- 端口：扁平贴纸 chip，最多 3 个 + 余量 -->
             <div
-              class="flex min-w-0 flex-wrap items-center gap-1 overflow-hidden"
+              class="flex min-w-0 flex-nowrap items-center gap-1 overflow-hidden"
               :style="{ width: widthOf('ports') }"
             >
-              <span
-                v-for="p in row._ports.slice(0, 6)"
+              <button
+                v-for="p in row._ports.slice(0, 3)"
                 :key="p"
-                class="rounded-full px-2 py-px text-[10px] font-bold tabular-nums"
-                :style="{
-                  background: 'var(--pv-blue-bg)',
-                  color: 'var(--pv-blue-text)',
-                  border: '1.5px solid var(--pv-stroke)',
-                }"
+                class="flat-port"
+                :style="{ background: 'var(--pv-blue-bg)', color: 'var(--pv-blue-text)' }"
+                :title="t('port.copyPort')"
+                @click.stop="copy(String(p), t('port.col.local'))"
               >
                 {{ p }}
-              </span>
+              </button>
               <span
-                v-if="row._ports.length > 6"
-                class="rounded-full px-2 py-px text-[10px] font-bold"
-                :style="{ background: 'var(--pv-border)', color: 'var(--pv-text-soft)', border: '1.5px solid var(--pv-stroke)' }"
+                v-if="row._ports.length > 3"
+                class="shrink-0 text-[10px] font-bold tabular-nums"
+                :style="{ color: 'var(--pv-text-faint)' }"
               >
-                +{{ row._ports.length - 6 }}
+                +{{ row._ports.length - 3 }}
               </span>
               <span v-if="!row._ports.length" class="text-[11px]" :style="{ color: 'var(--pv-text-faint)' }">—</span>
             </div>
 
-            <!-- 状态 -->
-            <div :style="{ width: widthOf('status') }">
-              <span
-                class="pv-pill text-[10px]"
-                :style="{
-                  background: row.tcp + row.udp > 0 ? 'var(--pv-green-bg)' : 'var(--pv-border)',
-                  color: row.tcp + row.udp > 0 ? 'var(--pv-green-text)' : 'var(--pv-text-soft)',
-                  padding: '1px 8px',
-                }"
-              >
-                {{ row.tcp + row.udp > 0 ? t("status.active") : t("status.idle") }}
-              </span>
-            </div>
-
-            <!-- 操作 -->
-            <div class="flex shrink-0 items-center gap-1.5" :style="{ width: widthOf('actions') }">
-              <button
-                v-if="row.tcp + row.udp > 0"
-                class="pv-btn px-2.5 py-1 text-[11px]"
-                :style="{ background: 'var(--pv-green-bg)', color: 'var(--pv-green-text)' }"
-                @click="toggle(row.pid)"
-              >
-                {{ expandedPid === row.pid ? t("btn.collapse") : t("btn.connections") }}
-              </button>
+            <!-- 操作（row-actions 标记用于双击行时排除，避免误触「连接 / 结束」） -->
+            <div class="row-actions flex shrink-0 items-center gap-2" :style="{ width: widthOf('actions') }">
               <n-popconfirm
                 :positive-text="t('btn.kill')"
                 :negative-text="t('btn.cancel')"
-                @positive-click="handleKill(row.pid)"
+                @positive-click="handleKill(row.pid, row.creationTime100ns)"
               >
                 <template #trigger>
-                  <button class="pv-btn px-2.5 py-1 text-[11px] text-white" :style="{ background: '#DC2626' }">
-                    {{ t("btn.kill") }}
-                  </button>
+                  <button class="pv-mini-btn danger row-action-btn kill-action-btn">{{ t("btn.kill") }}</button>
                 </template>
                 <template #default>
                   {{
-                    isCritical(row.pid, row.name)
+                    isCriticalProcess(row.pid, row.name)
                       ? t("confirm.critical", { name: row.name, pid: row.pid })
                       : t("confirm.kill", { name: row.name, pid: row.pid })
                   }}
                 </template>
               </n-popconfirm>
+              <button
+                v-if="row.tcp + row.udp > 0"
+                class="pv-mini-btn row-action-btn"
+                :style="{ color: 'var(--pv-green-text)' }"
+                @click="toggle(row.pid)"
+              >
+                {{ expandedPid === row.pid ? t("btn.collapse") : t("btn.connections") }}
+              </button>
             </div>
           </div>
 
@@ -455,7 +455,7 @@ function iconStyle(row: ProcessInfo) {
           <div
             v-if="expandedPid === row.pid && row.tcp + row.udp > 0"
             class="px-5 py-3"
-            :style="{ background: 'var(--pv-card-2)', borderBottom: '1px dashed var(--pv-border)' }"
+            :style="{ background: 'var(--pv-card-2)', borderBottom: '1px solid var(--pv-border)' }"
           >
             <div class="flex flex-col gap-1">
               <div
@@ -465,15 +465,9 @@ function iconStyle(row: ProcessInfo) {
                 :style="{ background: 'var(--pv-card)', border: '1.5px solid var(--pv-border)' }"
               >
                 <span class="w-14 shrink-0 font-extrabold" :style="{ color: 'var(--pv-text)' }">{{ c.protocol }}</span>
-                <span class="w-20 shrink-0 tabular-nums" :style="{ color: 'var(--pv-text-soft)' }">
-                  :{{ c.localPort }}
-                </span>
-                <span class="min-w-0 flex-1 truncate tabular-nums" :style="{ color: 'var(--pv-text-soft)' }">
-                  {{ c.localAddress }}
-                </span>
-                <span class="min-w-0 flex-1 truncate tabular-nums" :style="{ color: 'var(--pv-text-soft)' }">
-                  {{ c.remoteAddress }}
-                </span>
+                <span class="w-20 shrink-0 tabular-nums" :style="{ color: 'var(--pv-text-soft)' }">:{{ c.localPort }}</span>
+                <span class="min-w-0 flex-1 truncate tabular-nums" :style="{ color: 'var(--pv-text-soft)' }">{{ c.localAddress }}</span>
+                <span class="min-w-0 flex-1 truncate tabular-nums" :style="{ color: 'var(--pv-text-soft)' }">{{ c.remoteAddress }}</span>
                 <span
                   class="shrink-0 rounded-full px-2 py-px text-[10px] font-bold"
                   :style="{
@@ -532,19 +526,19 @@ function iconStyle(row: ProcessInfo) {
         </button>
       </div>
     </Teleport>
+
+    <!-- 进程详情抽屉 -->
+    <ProcessDetail v-model:show="showDetail" :pid="detailPid" />
   </div>
 </template>
 
 <style scoped>
-/* 表头容器隐藏横向滚动条（WebView2 为 Chromium） */
 .header-scroll {
   scrollbar-width: none;
 }
 .header-scroll::-webkit-scrollbar {
   display: none;
 }
-
-/* 可排序表头（CPU / 内存） */
 .sort-head {
   display: inline-flex;
   align-items: center;
@@ -567,7 +561,52 @@ function iconStyle(row: ProcessInfo) {
   opacity: 1;
 }
 
-/* 列宽拖拽手柄（吸附在列右边框，向两侧延伸 4px） */
+/* CPU 细条：数值在上、进度在下，不抢列宽 */
+.cpu-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex: none;
+}
+.cpu-value {
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+.cpu-track {
+  display: block;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--pv-border);
+  overflow: hidden;
+}
+.cpu-track i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+}
+.conn-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex: none;
+}
+.flat-port {
+  border: 0;
+  border-radius: 999px;
+  padding: 2px 7px;
+  font-size: 10px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  flex: none;
+}
+.flat-port:hover {
+  filter: brightness(0.96);
+}
+
 .col-resizer {
   position: absolute;
   top: 0;
@@ -583,7 +622,6 @@ function iconStyle(row: ProcessInfo) {
   background: rgba(34, 197, 94, 0.28);
 }
 
-/* 右键菜单（贴纸风格，Teleport 到 body 后仍继承 CSS 变量） */
 .pv-ctx {
   position: fixed;
   z-index: 3000;
@@ -627,12 +665,12 @@ function iconStyle(row: ProcessInfo) {
   background: #fee2e2;
 }
 
-/* 行悬停高亮：展开态用次级面，悬停时统一切到更明显的行高亮色。 */
 .pv-row {
   background: transparent;
 }
 .pv-row:hover {
   background: var(--pv-row-hover);
+  box-shadow: inset 3px 0 0 var(--pv-green);
 }
 .pv-row-expanded {
   background: var(--pv-card-2);

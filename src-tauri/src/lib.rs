@@ -1,6 +1,6 @@
 mod netinfo;
 
-use netinfo::{ConnectionInfo, ProcessInfo};
+use netinfo::SystemSnapshot;
 use std::sync::Mutex;
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
@@ -9,62 +9,137 @@ use tauri::Manager;
 /// 当前界面语言（"zh"/"en"），用于系统托盘菜单文案同步
 static LANG: Mutex<&'static str> = Mutex::new("zh");
 
-/// 获取全部 TCP/UDP 连接快照
-#[tauri::command]
-fn get_connections() -> Vec<ConnectionInfo> {
-    netinfo::get_connections()
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct LaunchState {
+    from_elevation: bool,
+    is_elevated: bool,
+    state: Option<String>,
 }
 
-/// 获取系统全部进程（含无网络连接进程）及连接统计
-#[tauri::command]
-fn get_processes() -> Vec<ProcessInfo> {
-    netinfo::get_processes()
+/// 读取本程序自己写入的 `flag value` 启动参数（ADR-0010）
+fn arg_value(flag: &str) -> Option<String> {
+    let args: Vec<String> = std::env::args().collect();
+    args.iter()
+        .position(|a| a == flag)
+        .and_then(|i| args.get(i + 1))
+        .cloned()
 }
 
-/// 将命令输出字节按系统 ANSI 代码页解码为字符串。
-///
-/// `taskkill` 等控制台工具的输出是 ANSI/OEM 编码（中文 Windows 为 GBK/cp936），
-/// 直接 `String::from_utf8_lossy` 会把 GBK 字节当 UTF-8 解码成乱码。
-/// 用 `GetACP` 取系统实际代码页 + `MultiByteToWideChar` 转 UTF-16，任何区域设置均正确。
-fn decode_ansi_lossy(bytes: &[u8]) -> String {
-    use windows::Win32::Globalization::{GetACP, MultiByteToWideChar};
+fn launched_elevated() -> bool {
+    std::env::args().any(|a| a == "--elevated")
+}
 
-    if bytes.is_empty() {
-        return String::new();
+/// PCWSTR 需要以 NUL 结尾的 UTF-16 缓冲区
+#[cfg(target_os = "windows")]
+fn wide(s: &str) -> Vec<u16> {
+    s.encode_utf16().chain(std::iter::once(0)).collect()
+}
+
+/// 获取单次统一快照：进程 + 连接 + 告警 + 能力状态（见 ADR-0009）。
+/// 前端只调用这一条命令，一轮刷新只采集一份 TCP/UDP 数据。
+#[tauri::command]
+fn get_system_snapshot() -> Result<SystemSnapshot, String> {
+    netinfo::get_system_snapshot()
+}
+
+/// 启动状态：前端据此恢复提权前的视图与筛选（ADR-0010）。
+#[tauri::command]
+fn get_launch_state() -> LaunchState {
+    LaunchState {
+        from_elevation: launched_elevated(),
+        is_elevated: netinfo::is_process_elevated(),
+        state: arg_value("--state"),
     }
-    unsafe {
-        let cp = GetACP();
-        // 第一段参数 None：只求转换后的 UTF-16 字符数（windows 0.62 的 slice 版签名）
-        let needed = MultiByteToWideChar(cp, Default::default(), bytes, None);
-        if needed <= 0 {
-            return String::from_utf8_lossy(bytes).into_owned();
+}
+
+/// 从受限模式重启为管理员实例。返回 true 表示已创建提权进程；
+/// false 表示当前进程本来就是管理员（例如快照尚未回来时提前点击）。
+/// 调用方只有在 true 时才应调用 `finish_elevation` 退出当前实例。
+#[tauri::command]
+fn relaunch_elevated(app: tauri::AppHandle, state: Option<String>) -> Result<bool, String> {
+    if netinfo::is_process_elevated() {
+        return Ok(false);
+    }
+
+    let exe = std::env::current_exe().map_err(|_| "ELEVATION_FAILED".to_string())?;
+    let mut params = format!("--elevated --wait-pid {}", std::process::id());
+    if let Some(state) = state.filter(|s| !s.is_empty()) {
+        // 前端传 base64url，无空格与引号，可直接拼进参数串
+        params.push_str(&format!(" --state {state}"));
+    }
+    if let Some(window) = app.get_webview_window("main") {
+        if let (Ok(pos), Ok(size)) = (window.outer_position(), window.outer_size()) {
+            params.push_str(&format!(
+                " --bounds {},{},{},{}",
+                pos.x, pos.y, size.width, size.height
+            ));
         }
-        let mut buf = vec![0u16; needed as usize];
-        let written = MultiByteToWideChar(cp, Default::default(), bytes, Some(&mut buf));
-        buf.truncate(written.max(0) as usize);
-        String::from_utf16_lossy(&buf)
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        use windows::core::{w, PCWSTR};
+        use windows::Win32::Foundation::{CloseHandle, GetLastError, ERROR_CANCELLED};
+        use windows::Win32::UI::Shell::{
+            ShellExecuteExW, SEE_MASK_FLAG_NO_UI, SEE_MASK_NOCLOSEPROCESS, SHELLEXECUTEINFOW,
+        };
+        use windows::Win32::UI::WindowsAndMessaging::SW_SHOWNORMAL;
+
+        let file = wide(&exe.to_string_lossy());
+        let parameters = wide(&params);
+        let mut info = SHELLEXECUTEINFOW {
+            cbSize: std::mem::size_of::<SHELLEXECUTEINFOW>() as u32,
+            fMask: SEE_MASK_NOCLOSEPROCESS | SEE_MASK_FLAG_NO_UI,
+            lpVerb: w!("runas"),
+            lpFile: PCWSTR(file.as_ptr()),
+            lpParameters: PCWSTR(parameters.as_ptr()),
+            nShow: SW_SHOWNORMAL.0,
+            ..Default::default()
+        };
+
+        unsafe {
+            if let Err(err) = ShellExecuteExW(&mut info) {
+                let last = GetLastError();
+                // UAC 取消可能落在 GetLastError()=1223，也可能只体现在 HRESULT 上
+                let cancelled = last == ERROR_CANCELLED || err.code().0 as u32 == 0x8007_04C7;
+                return Err(if cancelled {
+                    "ELEVATION_CANCELLED".into()
+                } else {
+                    format!("ELEVATION_FAILED:{}", last.0)
+                });
+            }
+            if !info.hProcess.is_invalid() {
+                let _ = CloseHandle(info.hProcess);
+            }
+        }
+        return Ok(true);
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = exe;
+        return Err("ELEVATION_UNSUPPORTED".into());
     }
 }
 
-/// 结束指定 PID 的进程（taskkill /F）
+/// 提权实例已经创建：隐藏旧实例的托盘图标后退出，避免双托盘。
 #[tauri::command]
-fn kill_process(pid: u32) -> Result<String, String> {
-    let output = std::process::Command::new("taskkill")
-        .args(["/F", "/PID", &pid.to_string()])
-        .output()
-        .map_err(|e| format!("无法执行 taskkill：{}", e))?;
-    if output.status.success() {
-        Ok(format!("进程 {} 已结束", pid))
-    } else {
-        let stdout = decode_ansi_lossy(&output.stdout);
-        let stderr = decode_ansi_lossy(&output.stderr);
-        let msg = format!("{} {}", stdout.trim(), stderr.trim()).trim().to_string();
-        Err(if msg.is_empty() {
-            format!("结束进程 {} 失败", pid)
-        } else {
-            msg
-        })
+fn finish_elevation(app: tauri::AppHandle) {
+    if let Some(tray) = app.tray_by_id("main") {
+        let _ = tray.set_visible(false);
     }
+    app.exit(0);
+}
+
+/// 结束指定进程：先校验进程实例身份（PID + 创建时间），再在同一 HANDLE 上终止（ADR-0008）。
+/// 成功返回空；失败返回结构化错误码（ACCESS_DENIED / PROCESS_NOT_FOUND /
+/// PROTECTED_PROCESS / INVALID_PROCESS_IDENTITY / PROCESS_IDENTITY_CHANGED / TERMINATION_FAILED）。
+/// expected_creation_time_100ns 为十进制字符串，与快照中的 creationTime100ns 一致。
+#[tauri::command]
+fn kill_process(pid: u32, expected_creation_time_100ns: Option<String>) -> Result<(), String> {
+    netinfo::terminate_process_checked(pid, expected_creation_time_100ns.as_deref())
+        .map_err(|code| code.to_string())
 }
 
 /// 设置界面语言，并同步重建系统托盘菜单文案（"zh"/"en"）
@@ -215,29 +290,72 @@ fn apply_window_round(window: &tauri::WebviewWindow) {
     }
 }
 
+/// 提权实例创建窗口前等旧实例退出，避免短暂双托盘（ADR-0010）。
+/// 返回 true 表示旧实例已退出或本来就不存在，可以安全注册单实例插件。
+#[cfg(target_os = "windows")]
+fn wait_for_previous_instance() -> bool {
+    let Some(pid) = arg_value("--wait-pid").and_then(|v| v.parse::<u32>().ok()) else {
+        return true;
+    };
+    use windows::Win32::Foundation::{CloseHandle, WAIT_OBJECT_0};
+    use windows::Win32::System::Threading::{OpenProcess, WaitForSingleObject, PROCESS_SYNCHRONIZE};
+    unsafe {
+        if let Ok(handle) = OpenProcess(PROCESS_SYNCHRONIZE, false, pid) {
+            let result = WaitForSingleObject(handle, 5000);
+            let _ = CloseHandle(handle);
+            return result == WAIT_OBJECT_0;
+        }
+    }
+    true
+}
+
+/// 提权接管时把窗口放回原来的位置与大小。
+#[cfg(target_os = "windows")]
+fn apply_launch_bounds(window: &tauri::WebviewWindow) {
+    let Some(raw) = arg_value("--bounds") else {
+        return;
+    };
+    let nums: Vec<i64> = raw.split(',').filter_map(|s| s.parse().ok()).collect();
+    if nums.len() != 4 {
+        return;
+    }
+    let width = nums[2].clamp(1024, 10000) as u32;
+    let height = nums[3].clamp(640, 10000) as u32;
+    let _ = window.set_position(tauri::PhysicalPosition::new(nums[0] as i32, nums[1] as i32));
+    let _ = window.set_size(tauri::PhysicalSize::new(width, height));
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    // CPU 占用率采用两次采样增量法（见 netinfo / ADR-005）。
+    // 提权接管：先等旧实例退出，再建窗口与托盘（ADR-0010）
+    #[cfg(target_os = "windows")]
+    let previous_exited = wait_for_previous_instance();
+    #[cfg(not(target_os = "windows"))]
+    let previous_exited = true;
+
+    // CPU 占用率采用两次采样增量法（采样 key 含进程创建时间，见 netinfo / ADR-0009）。
     // 在窗口与 WebView 创建之前，于后台先采一次建立基线，使前端首屏加载即可显示 CPU；
-    // 不引入任何定时轮询，界面数据仍只在用户手动刷新时更新。
+    // 这只是采样基线，不是界面定时轮询——界面的定时刷新由前端 timer 按 ADR-0007 控制。
     std::thread::spawn(|| {
-        let _ = netinfo::get_processes();
+        let _ = netinfo::get_system_snapshot();
     });
 
     // 单实例（防多开）必须作为第一个插件注册（见 docs/ADR-006）。
-    // 第二实例启动时新进程立即退出，回调在已运行的实例里执行：
-    // 把主窗口从托盘隐藏态/最小化态唤起并聚焦，符合"托盘常驻 + 防多开"的产品形态。
+    // 提权接管实例要等旧实例退出后再注册，才能接管互斥体；等待超时才跳过，
+    // 以免被仍在运行的旧实例直接吞掉（ADR-0010）。
     let mut builder = tauri::Builder::default();
 
     #[cfg(desktop)]
     {
-        builder = builder.plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
-            if let Some(window) = app.get_webview_window("main") {
-                let _ = window.unminimize();
-                let _ = window.show();
-                let _ = window.set_focus();
-            }
-        }));
+        if !launched_elevated() || previous_exited {
+            builder = builder.plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.unminimize();
+                    let _ = window.show();
+                    let _ = window.set_focus();
+                }
+            }));
+        }
     }
 
     builder
@@ -253,8 +371,10 @@ pub fn run() {
             .build(),
         )
         .invoke_handler(tauri::generate_handler![
-            get_connections,
-            get_processes,
+            get_system_snapshot,
+            get_launch_state,
+            relaunch_elevated,
+            finish_elevation,
             kill_process,
             set_language,
             open_in_explorer,
@@ -264,6 +384,7 @@ pub fn run() {
             #[cfg(target_os = "windows")]
             if let Some(window) = app.get_webview_window("main") {
                 apply_window_round(&window);
+                apply_launch_bounds(&window);
             }
             let _ = setup_tray(app.handle());
             Ok(())
@@ -274,28 +395,7 @@ pub fn run() {
 
 #[cfg(test)]
 mod tests {
-    use super::{decode_ansi_lossy, is_installed_build_at};
-
-    #[test]
-    fn decodes_ansi_bytes() {
-        let cp = unsafe { windows::Win32::Globalization::GetACP() };
-        if cp != 936 {
-            eprintln!("跳过：系统 ANSI 代码页 {} 非 GBK/936", cp);
-            return;
-        }
-        // "错误: 进程 25476 未找到。" 的 GBK/cp936 字节（与中文 Windows 上 taskkill 输出一致）
-        let gbk: [u8; 25] = [
-            180, 237, 206, 243, 58, 32, 189, 248, 179, 204, 32, 50, 53, 52, 55, 54, 32, 206,
-            180, 213, 210, 181, 189, 161, 163,
-        ];
-        assert_eq!(decode_ansi_lossy(&gbk), "错误: 进程 25476 未找到。");
-    }
-
-    #[test]
-    fn passes_through_ascii_and_empty() {
-        assert_eq!(decode_ansi_lossy(b"ERROR: not found."), "ERROR: not found.");
-        assert_eq!(decode_ansi_lossy(b""), "");
-    }
+    use super::is_installed_build_at;
 
     #[test]
     fn installed_build_keyed_off_sibling_uninstaller() {

@@ -1,6 +1,5 @@
 import { ref, computed, watch } from "vue";
 import { useOsTheme } from "naive-ui";
-import { trackFeatureToggled } from "../lib/analytics";
 
 export type ThemeMode = "system" | "dark" | "light";
 
@@ -26,8 +25,6 @@ export function useTheme() {
   function setTheme(v: ThemeMode) {
     themeMode.value = v;
     localStorage.setItem("port-view-theme", v);
-    // 只记布尔语义（是否显式选了亮/暗），不记具体值以外的自由文本（ADR-0003）。
-    trackFeatureToggled("theme", v !== "system");
   }
   return { themeMode, isDark, setTheme };
 }

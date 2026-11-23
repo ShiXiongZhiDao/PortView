@@ -2,11 +2,13 @@
 import { computed, ref } from "vue";
 import appIcon from "../../src-tauri/icons/app-icon.svg?url";
 import { useConnectionsStore } from "../stores/connections";
+import { useElevation } from "../composables/useElevation";
 import { useI18n } from "../i18n";
 import SettingsModal from "./SettingsModal.vue";
 
 const store = useConnectionsStore();
 const { t } = useI18n();
+const { elevate, elevating } = useElevation();
 const showSettings = ref(false);
 
 /** Hero 右侧统计块（彩色贴纸小块） */
@@ -40,6 +42,32 @@ const stats = computed(() => [
         <p class="-mt-0.5 text-base leading-none" :style="{ color: 'var(--pv-text-soft)' }">
           {{ t("app.desc") }}
         </p>
+        <span
+          v-if="store.isElevated"
+          class="mt-0.5 w-fit rounded-full px-2 py-px text-[10px] font-bold"
+          :style="{
+            background: 'var(--pv-green-bg)',
+            color: 'var(--pv-green-text)',
+            border: '1.5px solid var(--pv-stroke)',
+          }"
+          :title="t('status.elevatedTip')"
+        >
+          {{ t("status.elevated") }}
+        </span>
+        <button
+          v-else
+          class="pv-press elevate-badge mt-0.5 w-fit rounded-full px-2 py-px text-[10px] font-bold"
+          :style="{
+            background: 'var(--pv-amber-bg)',
+            color: 'var(--pv-amber-text)',
+            border: '1.5px solid var(--pv-stroke)',
+          }"
+          :title="t('status.limitedTip')"
+          :disabled="elevating"
+          @click="elevate"
+        >
+          {{ elevating ? t("status.elevating") : `${t("status.limited")} · ${t("elevate.action")}` }}
+        </button>
       </div>
     </div>
 
@@ -78,3 +106,16 @@ const stats = computed(() => [
     <SettingsModal v-model:show="showSettings" />
   </div>
 </template>
+
+<style scoped>
+.elevate-badge {
+  cursor: pointer;
+}
+.elevate-badge:hover {
+  filter: brightness(0.97);
+}
+.elevate-badge:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+</style>

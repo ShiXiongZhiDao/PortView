@@ -129,6 +129,65 @@
   box-shadow: var(--pv-sticker-shadow-pressed);
 }
 
+/* 列表内的纯文本按钮：默认 <button> 自带边框会像输入框，必须显式清掉。 */
+.pv-text-btn {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  box-shadow: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.pv-text-btn:hover {
+  text-decoration: underline;
+}
+
+/* 迷你贴纸按钮：列表行内的「连接 / 查看 / 结束」，比 .pv-btn 轻一档。 */
+.pv-mini-btn {
+  border: 2px solid var(--pv-stroke);
+  border-radius: var(--pv-radius-pill);
+  background: transparent;
+  box-shadow: 2px 2px 0 var(--pv-stroke);
+  padding: 3px 9px;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.35;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: transform 0.1s ease-out, box-shadow 0.1s ease-out, background 0.1s ease-out;
+}
+.pv-mini-btn:active {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0 var(--pv-stroke);
+}
+.pv-mini-btn.danger {
+  border-color: #dc2626;
+  color: #dc2626;
+}
+.pv-mini-btn.danger:hover {
+  background: #dc2626;
+  color: #fff;
+}
+
+/* 列表操作区按钮：统一放大热区（进程表「连接 / 结束」、端口表「查看进程」） */
+.row-action-btn {
+  min-height: 32px;
+  padding: 6px 13px;
+  font-size: 12px;
+}
+.kill-action-btn {
+  min-width: 72px;
+  padding-inline: 16px;
+}
+
+/* 键盘焦点：贴纸风格下仍要有清晰的焦点环，不只依赖鼠标悬停。 */
+.pv-text-btn:focus-visible,
+.pv-mini-btn:focus-visible {
+  outline: 2px solid var(--pv-green);
+  outline-offset: 2px;
+}
+
 /* ---------- naive-ui 组件贴纸边框覆盖 ---------- */
 
 /* 所有按钮：深色粗边框 + 偏移阴影 */

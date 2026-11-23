@@ -1,19 +1,31 @@
 <script setup lang="ts">
-import { computed, onMounted } from "vue";
+import { computed, onMounted, onUnmounted, ref } from "vue";
 import { darkTheme } from "naive-ui";
+import { invoke } from "@tauri-apps/api/core";
 import { useConnectionsStore } from "./stores/connections";
 import { useTheme } from "./composables/useTheme";
+import { useAutoRefresh } from "./composables/useAutoRefresh";
+import { useShortcuts } from "./composables/useShortcuts";
 import { useI18n } from "./i18n";
 import { trackAppStarted } from "./lib/analytics";
+import { decodeElevationState, type LaunchState } from "./lib/launch-state";
 import HeroHeader from "./components/HeroHeader.vue";
 import FilterBar from "./components/FilterBar.vue";
 import ProcessList from "./components/ProcessList.vue";
+import PortList from "./components/PortList.vue";
 import TitleBar from "./components/TitleBar.vue";
 
 const store = useConnectionsStore();
 const { isDark, themeMode } = useTheme();
-const { lang, syncLanguageToBackend } = useI18n();
+const { lang, t, syncLanguageToBackend } = useI18n();
 const theme = computed(() => (isDark.value ? darkTheme : null));
+
+/** 部分采集失败的明细（ADR-0009：告警不能被静默吞掉，两个视图都要看得到） */
+const warningDetail = computed(() =>
+  store.warnings
+    .map((w) => `${w.source}${w.addressFamily ? `/${w.addressFamily}` : ""}: ${w.message}`)
+    .join(" · "),
+);
 
 /** LearnHub 风格 naive-ui 主题覆盖（亮/暗） */
 const themeOverrides = computed(() =>
@@ -110,19 +122,46 @@ const themeOverrides = computed(() =>
       },
 );
 
-onMounted(() => {
+// 定时刷新单例：在应用根部启动一次，timer 生命周期与 App 一致（ADR-0007）。
+const autoRefresh = useAutoRefresh(store);
+// FilterBar 组件实例供 Ctrl+F 聚焦搜索框；弹层内的搜索不在此列。
+const filterBarRef = ref<{ focusSearch: () => void } | null>(null);
+useShortcuts(store, () => filterBarRef.value?.focusSearch());
+
+onMounted(async () => {
   // 托盘菜单语言要跟界面一致（系统语言默认值也在这里同步给 Rust）。
   syncLanguageToBackend();
   // 启动配置快照只取一次；统计失败被 analytics 自己吞掉，不影响首屏刷新。
   trackAppStarted(themeMode.value, lang.value);
-  store.refresh();
+
+  // 提权接管：恢复旧实例的视图与筛选，再抓第一份快照（ADR-0010）。
+  try {
+    const launch = await invoke<LaunchState>("get_launch_state");
+    store.isElevated = launch.isElevated;
+    const restored = decodeElevationState(launch.state);
+    if (restored) {
+      if (restored.view) store.view = restored.view;
+      if (restored.search !== undefined) store.search = restored.search;
+      if (restored.protocol) store.protocol = restored.protocol;
+      if (restored.status) store.status = restored.status;
+      if (restored.family) store.family = restored.family;
+      if (restored.listeningOnly !== undefined) store.listeningOnly = restored.listeningOnly;
+    }
+  } catch {
+    // 旧版本没有该命令时按普通启动处理，不影响首屏。
+  }
+
+  await store.refreshSnapshot();
 });
+
+onUnmounted(() => autoRefresh.stop());
 </script>
 
 <template>
   <n-config-provider :theme="theme" :theme-overrides="themeOverrides">
     <n-global-style />
-    <n-message-provider placement="top-right">
+    <!-- 通知放顶部居中：右上角会遮住无边框窗口的交通灯按钮 -->
+    <n-message-provider placement="top">
       <n-dialog-provider>
         <div
         class="flex h-screen flex-col overflow-hidden rounded-[14px]"
@@ -136,12 +175,53 @@ onMounted(() => {
           <!-- Hero 标题区（logo + 大标题 + 统计块 + 设置） -->
           <HeroHeader />
 
-          <!-- 筛选条 -->
-          <FilterBar />
+          <!-- 视图切换 + 筛选条：合并为一行 -->
+          <div class="mt-3 flex min-w-0 shrink-0 items-center gap-2.5">
+            <div
+              class="flex shrink-0 gap-1 rounded-xl p-1"
+              :style="{
+                background: 'var(--pv-card-2)',
+                border: '2px solid var(--pv-stroke)',
+                boxShadow: '2px 2px 0 var(--pv-stroke)',
+              }"
+            >
+              <button
+                v-for="v in (['process', 'port'] as const)"
+                :key="v"
+                class="rounded-lg px-4 py-1 text-xs font-extrabold transition-colors"
+                :style="store.view === v
+                  ? { background: 'var(--pv-green)', color: '#fff', border: '2px solid var(--pv-stroke)', boxShadow: '2px 2px 0 var(--pv-stroke)' }
+                  : { background: 'transparent', color: 'var(--pv-text-soft)', border: '2px solid transparent' }"
+                @click="store.view = v"
+              >
+                {{ v === 'process' ? t('view.process') : t('view.port') }}
+              </button>
+            </div>
 
-          <!-- 进程列表 -->
+            <FilterBar ref="filterBarRef" />
+          </div>
+
+          <!-- 部分采集失败：不遮断列表，但也不能静默吞掉（ADR-0009） -->
+          <div
+            v-if="store.warnings.length"
+            class="mt-2 flex min-w-0 shrink-0 items-center gap-2 rounded-lg px-3 py-1 text-[11px]"
+            :style="{
+              background: 'var(--pv-amber-bg)',
+              color: 'var(--pv-amber-text)',
+              border: '1.5px solid var(--pv-amber-text)',
+            }"
+            :title="warningDetail"
+          >
+            <span class="shrink-0 font-extrabold">
+              {{ t("warning.partial", { count: store.warnings.length }) }}
+            </span>
+            <span class="truncate opacity-80">{{ warningDetail }}</span>
+          </div>
+
+          <!-- 当前视图主体 -->
           <div class="min-h-0 flex-1 pt-3">
-            <ProcessList />
+            <ProcessList v-if="store.view === 'process'" />
+            <PortList v-else />
           </div>
         </div>
       </div>
