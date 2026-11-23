@@ -3,15 +3,15 @@
 <p align="center"><em>See what owns every port — in one calm, sticker-style window.</em></p>
 
 <p align="center">
-  [中文](./README.zh-CN.md) · English
+  <a href="./README.zh-CN.md">中文</a> · <strong>English</strong>
 </p>
 
 <p align="center">
-  [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-  [![Platform: Windows](https://img.shields.io/badge/platform-Windows%2010%2F11-blue.svg)](https://gitee.com/ShiXiongZhiDao/PortView/releases)
-  [![Bilingual](https://img.shields.io/badge/UI-%E4%B8%AD%E8%8B%B1%20%2F%20EN-purple.svg)](./README.zh-CN.md)
-  [![Privacy](https://img.shields.io/badge/privacy-no%20personal%20data-orange.svg)](#privacy)
-  [![Release](https://img.shields.io/badge/release-latest-brightgreen.svg)](https://gitee.com/ShiXiongZhiDao/PortView/releases)
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License: MIT"></a>
+  <a href="https://gitee.com/ShiXiongZhiDao/PortView/releases"><img src="https://img.shields.io/badge/platform-Windows%2010%2F11-blue.svg" alt="Platform: Windows"></a>
+  <a href="./README.zh-CN.md"><img src="https://img.shields.io/badge/UI-%E4%B8%AD%E8%8B%B1%20%2F%20EN-purple.svg" alt="Bilingual"></a>
+  <a href="#privacy"><img src="https://img.shields.io/badge/privacy-no%20personal%20data-orange.svg" alt="Privacy"></a>
+  <a href="https://gitee.com/ShiXiongZhiDao/PortView/releases"><img src="https://img.shields.io/badge/release-latest-brightgreen.svg" alt="Release"></a>
 </p>
 
 <p align="center">
